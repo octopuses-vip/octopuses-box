@@ -402,14 +402,7 @@ export function createAgentExecutor(
         return fail(`消息尚未保存，已暂停请求模型：${error instanceof Error ? error.message : String(error)}。请先重试保存。`);
       }
       if (!config) {
-        // 取不到连接信息的原因分两种，指向的修法完全不同：
-        // 远程要在设置页重新拉取，本地要修缓存目录下的 models.json
-        const localSource = useAppStore.getState().modelSource === "local";
-        return fail(
-          localSource
-            ? "未获取到模型连接信息，请在设置页「本地模型配置」里检查 models.json 后重试。"
-            : "未获取到模型连接信息，请在设置页重新获取后重试。",
-        );
+        return fail("未获取到模型连接信息，请在设置页「本地模型配置」里检查 models.json 后重试。");
       }
 
       // 请求与用量记录统一用「模型标识」：`store.model` 只是本地条目的选择键，不是网关认识的模型名

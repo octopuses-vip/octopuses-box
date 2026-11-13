@@ -4,7 +4,6 @@ import { STORE_PERSIST_KEY } from "../persist";
 import type { AppStore } from "../storeTypes";
 import { migratePersistedState, selectPersistedState, STORE_PERSIST_VERSION } from "./persistence";
 import { createAccountSlice } from "./slices/account";
-import { createUpdatesSlice } from "./slices/updates";
 import { createPreferencesSlice } from "./slices/preferences";
 import { createProjectsSlice } from "./slices/projects";
 import { createSessionsSlice } from "./slices/sessions";
@@ -28,7 +27,6 @@ export const useAppStore = create<AppStore>()(
   persist(
     (...args) => ({
       ...createAccountSlice(...args),
-      ...createUpdatesSlice(...args),
       ...createPreferencesSlice(...args),
       ...createProjectsSlice(...args),
       ...createSessionsSlice(...args),

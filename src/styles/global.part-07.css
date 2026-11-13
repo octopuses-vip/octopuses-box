@@ -308,7 +308,7 @@ button:disabled {
 .btn--primary:hover:not(:disabled) {
   border-color: var(--accent-hover);
 }
-.btn, .card, .list-row, .nav-item, .thread-item, .source-choice, .suggestion {
+.btn, .card, .list-row, .nav-item, .thread-item, .suggestion {
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 /* 宽屏设置使用独立分类栏，主栏变窄时恢复可换行标签。 */
@@ -567,18 +567,6 @@ button:disabled {
   line-height: 1.8;
   font-size: 14px;
 }
-.source-choice {
-  padding: 20px;
-  gap: 16px;
-}
-.source-choice:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-focus);
-}
-.source-choice__icon {
-  width: 40px;
-  height: 40px;
-}
 @container main (max-width: 900px) {
   .settings-page .page__inner {
     display: block;
@@ -658,9 +646,6 @@ button:disabled {
   }
   .form__grid {
     grid-template-columns: 1fr;
-  }
-  .source-choice {
-    padding: 14px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

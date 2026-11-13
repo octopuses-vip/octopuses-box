@@ -2,10 +2,8 @@ import { useCallback, useEffect, useState, type KeyboardEvent, type ReactNode } 
 import { ComputerSettings } from "../computer/ComputerSettings";
 
 import { clearCache, initCacheDir, readCacheInfo, type CacheInfo } from "../app/desktop/cache";
-import { parseApiError, probeEndpoint } from "../app/desktop/server";
 import { pickDirectory, revealLocalFile } from "../app/desktop/system";
 import { pruneAutomationAgents } from "../app/desktop/automation";
-import { useRequestLogout } from "../app/logout";
 import { APP_NAME, APP_VERSION } from "../app/meta";
 import { supportsBackgroundAgents, supportsKernelSandbox } from "../app/platform";
 import { useAppStore } from "../app/state";
@@ -43,12 +41,12 @@ function readLimitInput(value: string): number | null {
 
 const SETTINGS_CATEGORIES = [
   { id: "appearance", label: "外观", description: "选择配色主题与明暗模式，让界面更适合你的阅读习惯。" },
-  { id: "models", label: "模型与连接", description: "管理模型来源、连接地址和默认模型。" },
+  { id: "models", label: "模型与连接", description: "维护本地模型文件与默认模型。" },
   { id: "permissions", label: "权限与安全", description: "设置命令审批、沙箱与自动批准规则。" },
   { id: "runtime", label: "运行与上下文", description: "调整运行上限、上下文压缩和后台定时。" },
   { id: "storage", label: "存储与缓存", description: "查看本地存储用量，管理缓存目录与临时文件。" },
   { id: "advanced", label: "高级与调试", description: "查看模型调用记录等调试信息。" },
-  { id: "about", label: "账号与关于", description: "查看账号信息与应用版本。" },
+  { id: "about", label: "关于", description: "查看应用版本。" },
 ] as const;
 
 type SettingsCategory = typeof SETTINGS_CATEGORIES[number]["id"];
@@ -75,9 +73,6 @@ export function SettingsPage() {
   const modelConfigError = useAppStore((state) => state.modelConfigError);
   const loadModelConfig = useAppStore((state) => state.loadModelConfig);
   const setModel = useAppStore((state) => state.setModel);
-  const currentUser = useAppStore((state) => state.currentUser);
-  const logout = useAppStore((state) => state.logout);
-  const requestLogout = useRequestLogout();
   const cachePath = useAppStore((state) => state.cachePath);
   const setCachePath = useAppStore((state) => state.setCachePath);
   const trustReadOnlyCommands = useAppStore((state) => state.trustReadOnlyCommands);
@@ -118,17 +113,6 @@ export function SettingsPage() {
   const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const [cacheBusy, setCacheBusy] = useState(false);
   const [cacheError, setCacheError] = useState<string | null>(null);
-  const endpoint = useAppStore((state) => state.endpoint);
-  const setEndpoint = useAppStore((state) => state.setEndpoint);
-  /** 正在编辑管理端地址；为 false 时该区块是只读的 */
-  const [editingEndpoint, setEditingEndpoint] = useState(false);
-  const [draftHost, setDraftHost] = useState("");
-  const [draftPort, setDraftPort] = useState("");
-  /** 正在校验与探测新地址 */
-  const [endpointBusy, setEndpointBusy] = useState(false);
-  const [endpointError, setEndpointError] = useState<string | null>(null);
-  const modelSource = useAppStore((state) => state.modelSource);
-  const setModelSource = useAppStore((state) => state.setModelSource);
   const saveLocalModels = useAppStore((state) => state.saveLocalModels);
   const readLocalModelsText = useAppStore((state) => state.readLocalModelsText);
   /** 本地模型 JSON 草稿；null 表示还没从文件读回来，用模板预填 */
@@ -142,43 +126,12 @@ export function SettingsPage() {
   /** 本地模型文件是否已存在：不存在时说明「下面这份是模板」 */
   const [localFileExists, setLocalFileExists] = useState(true);
 
-  /** 当前选中模型的后台原始记录，用于判断图片能力来自接口还是本地开关 */
+  /** 当前选中模型的原始记录，用于判断图片能力来自文件声明还是本地开关 */
   const currentRemoteModel = remoteModels.find((item) => item.code === model);
-  /** 图片能力来源：接口下发（只读）还是本地手动开关 */
+  /** 图片能力来源：文件声明（只读）还是本地手动开关 */
   const visionSource = visionSourceOf(currentRemoteModel);
-  /** 当前是否真的支持图片输入（接口优先，缺失时看手动开关） */
+  /** 当前是否真的支持图片输入（文件声明优先，缺失时看手动开关） */
   const supportsImages = resolveSupportsImages(currentRemoteModel, imageInputEnabled);
-
-  /** 进入编辑态，用当前地址预填，用户从当前值改起 */
-  const startEndpointEdit = () => {
-    setDraftHost(endpoint?.host ?? "");
-    setDraftPort(endpoint?.port ?? "");
-    setEndpointError(null);
-    setEditingEndpoint(true);
-  };
-
-  /** 退出编辑态：丢弃草稿，同时清掉上一次探测留下的错误提示，避免提示残留在只读态 */
-  const cancelEndpointEdit = () => {
-    setEditingEndpoint(false);
-    setEndpointError(null);
-  };
-
-  /**
-   * 保存管理端地址：先校验格式并探测连通性，通过后才落库。
-   * 换了服务端会一并清空登录态（令牌由原管理端签发），路由随即退回登录页重新登录。
-   */
-  const saveEndpoint = async () => {
-    setEndpointBusy(true);
-    setEndpointError(null);
-    try {
-      setEndpoint(await probeEndpoint({ host: draftHost, port: draftPort }));
-      setEditingEndpoint(false);
-    } catch (err) {
-      setEndpointError(parseApiError(err).message);
-    } finally {
-      setEndpointBusy(false);
-    }
-  };
 
   /**
    * 把缓存目录下的 models.json 读回编辑框（开发者 Jan）。
@@ -194,11 +147,11 @@ export function SettingsPage() {
     setLocalSavedAt(null);
   }, [readLocalModelsText]);
 
-  // 切到本地模式（或换了缓存目录）时读一次，之后编辑框归用户管，不再自动覆盖草稿
+  // 进入设置页或换了缓存目录时读一次，之后编辑框归用户管，不再自动覆盖草稿
   useEffect(() => {
-    if (modelSource !== "local" || !cachePath) return;
+    if (!cachePath) return;
     void reloadLocalDraft();
-  }, [modelSource, cachePath, reloadLocalDraft]);
+  }, [cachePath, reloadLocalDraft]);
 
   /** 保存本地模型配置：校验错误逐条回显，通过则立刻按新列表重载模型 */
   const saveLocal = async () => {
@@ -402,154 +355,66 @@ export function SettingsPage() {
         <SettingsGroup category="models" active={category}>
 
         <div className="page__section">
-          <div className="page__section-label">模型来源</div>
-          <Segmented
-            ariaLabel="模型来源"
-            options={[
-              { value: "remote", label: "远程管理端" },
-              { value: "local", label: "本地文件" },
-            ]}
-            value={modelSource ?? "remote"}
-            onChange={setModelSource}
+          <div className="page__section-label">本地模型配置</div>
+          <div className="path-box">
+            <Icon name="folder" size={13} />
+            <span className="mono">{cachePath ? `${cachePath}/${LOCAL_MODELS_FILE}` : "尚未配置缓存目录"}</span>
+          </div>
+          <textarea
+            className="form__textarea form__textarea--code"
+            style={{ marginTop: 8, width: "100%" }}
+            rows={12}
+            spellCheck={false}
+            aria-label="本地模型配置 JSON"
+            value={localDraft ?? LOCAL_MODELS_TEMPLATE}
+            onChange={(event) => {
+              setLocalDraft(event.target.value);
+              setLocalErrors([]);
+              setLocalSavedAt(null);
+            }}
           />
           <p className="page__desc" style={{ marginTop: 8 }}>
-            {modelSource === "remote"
-              ? "模型列表由管理端按账号下发，需要先配置管理端地址并登录；客户端更新也走这台服务器。"
-              : "模型列表改从缓存目录下的 models.json 读取，不需要管理端地址与登录，也不检查客户端更新。接入地址与密钥由你自己在这个文件里维护。"}
+            顶层是数组，每项至少要有 <span className="mono">code</span>（调用时用的模型名）与{" "}
+            <span className="mono">baseUrl</span>（OpenAI 兼容协议的基础地址，须以 http:// 或 https:// 开头）；{" "}
+            <span className="mono">name</span> / <span className="mono">provider</span> /{" "}
+            <span className="mono">apiKey</span> / <span className="mono">description</span> 可留空，{" "}
+            <span className="mono">supportsImages</span> 写 true 表示支持图片输入。
+            {!localFileExists ? " 当前文件还不存在，下面是一份模板，改好后点「保存」即可生成。" : ""}
           </p>
-        </div>
-
-        {modelSource === "local" ? (
-          <div className="page__section">
-            <div className="page__section-label">本地模型配置</div>
-            <div className="path-box">
-              <Icon name="folder" size={13} />
-              <span className="mono">{cachePath ? `${cachePath}/${LOCAL_MODELS_FILE}` : "尚未配置缓存目录"}</span>
-            </div>
-            <textarea
-              className="form__textarea form__textarea--code"
-              style={{ marginTop: 8, width: "100%" }}
-              rows={12}
-              spellCheck={false}
-              aria-label="本地模型配置 JSON"
-              value={localDraft ?? LOCAL_MODELS_TEMPLATE}
-              onChange={(event) => {
-                setLocalDraft(event.target.value);
-                setLocalErrors([]);
-                setLocalSavedAt(null);
-              }}
-            />
-            <p className="page__desc" style={{ marginTop: 8 }}>
-              顶层是数组，每项至少要有 <span className="mono">code</span>（调用时用的模型名）与{" "}
-              <span className="mono">baseUrl</span>（OpenAI 兼容协议的基础地址，须以 http:// 或 https:// 开头）；{" "}
-              <span className="mono">name</span> / <span className="mono">provider</span> /{" "}
-              <span className="mono">apiKey</span> / <span className="mono">description</span> 可留空，{" "}
-              <span className="mono">supportsImages</span> 写 true 表示支持图片输入。
-              {!localFileExists ? " 当前文件还不存在，下面是一份模板，改好后点「保存」即可生成。" : ""}
-            </p>
-            {localErrors.length > 0 ? (
-              <div className="page__desc" style={{ marginTop: 8 }}>
-                {localErrors.map((error) => (
-                  <div key={error}>{error}</div>
-                ))}
-              </div>
-            ) : null}
-            {localSavedAt ? (
-              <p className="page__desc" style={{ marginTop: 8 }}>
-                {localSavedAt}
-              </p>
-            ) : null}
-            <div className="login__actions" style={{ marginTop: 8 }}>
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={!cachePath || localBusy}
-                onClick={() => void saveLocal()}
-              >
-                {localBusy ? "正在保存…" : "保存"}
-              </Button>
-              <Button variant="ghost" size="sm" disabled={localBusy} onClick={() => void reloadLocalDraft()}>
-                放弃修改并重新读取
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!cachePath}
-                onClick={() => void revealModelsFile()}
-              >
-                在文件管理器中显示
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {modelSource === "remote" ? (
-        <div className="page__section">
-          <div className="page__section-label">管理端地址</div>
-          {editingEndpoint ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", gap: 10 }}>
-                <input
-                  className="form__input"
-                  style={{ flex: 1 }}
-                  value={draftHost}
-                  placeholder="管理端 IP 或主机名"
-                  aria-label="管理端地址"
-                  onChange={(event) => setDraftHost(event.target.value)}
-                />
-                <input
-                  className="form__input"
-                  style={{ width: 118 }}
-                  value={draftPort}
-                  placeholder="端口"
-                  aria-label="管理端端口"
-                  inputMode="numeric"
-                  onChange={(event) => setDraftPort(event.target.value)}
-                />
-              </div>
-              <div className="login__actions" style={{ marginTop: 0 }}>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!draftHost.trim() || !draftPort.trim() || endpointBusy}
-                  onClick={() => void saveEndpoint()}
-                >
-                  {endpointBusy ? "正在连接…" : "保存"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={endpointBusy}
-                  onClick={cancelEndpointEdit}
-                >
-                  取消
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="path-box">
-              <Icon name="globe" size={13} />
-              {endpoint ? `${endpoint.host}:${endpoint.port}` : "尚未配置"}
-            </div>
-          )}
-          {editingEndpoint ? null : (
-            <div className="login__actions" style={{ marginTop: 8 }}>
-              <Button variant="ghost" size="sm" onClick={startEndpointEdit}>
-                修改
-              </Button>
-            </div>
-          )}
-          <p className="page__desc" style={{ marginTop: 8 }}>
-            客户端登录与模型列表都请求这个地址，保存前会先确认能够连接。修改后需要重新登录，因为令牌由原管理端签发。
-          </p>
-          {endpointError ? (
-            <div className="list-row" style={{ marginBottom: 0 }}>
-              <Icon name="alert" size={14} />
-              <span className="list-row__desc">{endpointError}</span>
+          {localErrors.length > 0 ? (
+            <div className="page__desc" style={{ marginTop: 8 }}>
+              {localErrors.map((error) => (
+                <div key={error}>{error}</div>
+              ))}
             </div>
           ) : null}
+          {localSavedAt ? (
+            <p className="page__desc" style={{ marginTop: 8 }}>
+              {localSavedAt}
+            </p>
+          ) : null}
+          <div className="login__actions" style={{ marginTop: 8 }}>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!cachePath || localBusy}
+              onClick={() => void saveLocal()}
+            >
+              {localBusy ? "正在保存…" : "保存"}
+            </Button>
+            <Button variant="ghost" size="sm" disabled={localBusy} onClick={() => void reloadLocalDraft()}>
+              放弃修改并重新读取
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!cachePath}
+              onClick={() => void revealModelsFile()}
+            >
+              在文件管理器中显示
+            </Button>
+          </div>
         </div>
-        ) : null}
 
         <div className="page__section">
           <div className="page__section-label">默认模型</div>
@@ -578,8 +443,7 @@ export function SettingsPage() {
               {supportsImages ? "已开启" : "已关闭"}
             </button>
           </div>
-          {/* 常驻显示：后台随时可能新增或下架模型，本地文件也可能被外部编辑器改过，
-              用户需要能主动重新拉一次列表 */}
+          {/* 常驻显示：本地文件可能被外部编辑器改过，用户需要能主动重新读一次 */}
           <div className="login__actions" style={{ marginTop: 8 }}>
             <button
               type="button"
@@ -587,16 +451,12 @@ export function SettingsPage() {
               disabled={modelConfigStatus === "loading"}
               onClick={() => void loadModelConfig()}
             >
-              {modelConfigStatus === "loading"
-                ? "正在重新获取…"
-                : modelSource === "local"
-                  ? "重新读取本地文件"
-                  : "重新获取模型"}
+              {modelConfigStatus === "loading" ? "正在读取…" : "重新读取本地文件"}
             </button>
           </div>
           {modelConfigError ? (
             <p className="page__desc" style={{ marginTop: 8 }}>
-              模型列表获取失败：{modelConfigError}
+              模型列表读取失败：{modelConfigError}
             </p>
           ) : null}
         </div>
@@ -888,27 +748,6 @@ export function SettingsPage() {
 
         </SettingsGroup>
 
-        <SettingsGroup category="about" active={category}>
-        {modelSource === "remote" ? (
-        <div className="page__section">
-          <div className="page__section-label">账号</div>
-          <div className="list-row">
-            <Icon name="user" size={15} />
-            <span className="list-row__main">
-              <span className="list-row__title">{currentUser ?? "未登录"}</span>
-              <span className="list-row__desc">当前登录账号，登录状态仅保存在本机。</span>
-            </span>
-          </div>
-          <div className="login__actions">
-            <button type="button" className="btn btn--ghost btn--sm" onClick={() => void requestLogout(logout)}>
-              退出登录
-            </button>
-          </div>
-        </div>
-        ) : null}
-
-        </SettingsGroup>
-
         <SettingsGroup category="advanced" active={category}>
         <div className="page__section">
           <div className="page__section-label">模型调用转储</div>
@@ -947,10 +786,10 @@ export function SettingsPage() {
             <Icon name="info" size={15} />
             <span className="list-row__main">
               <span className="list-row__title">
-                {APP_NAME} 企业内部 AI 客户端 {APP_VERSION}
+                {APP_NAME} 桌面 AI 客户端 {APP_VERSION}
               </span>
               <span className="list-row__desc">
-                企业内部的 AI 统一终端，旨在便于管理模型的接入与用户的使用。
+                本地优先的 AI 工作终端，模型接入与数据都由你自己掌控。
               </span>
             </span>
           </div>

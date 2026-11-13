@@ -164,8 +164,7 @@ export function Sidebar() {
       <div className="sidebar__scroll">
         <div className="sidebar__workspace-label">工作空间 <span>WORKSPACE</span></div>
         {/*
-          顶部行只保留「新建会话」；模型来源 / 账号标识已上移到顶栏（ModelSourceBadge），
-          侧栏不再重复展示身份信息。
+          顶部行只保留「新建会话」：客户端不再连接管理端，也不再展示模型来源与账号信息。
         */}
         <div className="sidebar__top-row sidebar__top-row--single">
           {/* 会话是独立临时的上下文：不依赖任何项目，任何时候都能开一个全新会话 */}

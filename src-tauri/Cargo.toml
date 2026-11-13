@@ -29,10 +29,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }
 portable-pty = "0.9"
-# 客户端接口（登录 / 授权模型列表 / 检查更新）走原生请求：服务端未开启 CORS，
-# WebView 里的 fetch 会被同源策略拦截。版本与 feature 与 ots-cli/crates/ots-llm 对齐；
-# query 用于「检查更新」携带 currentVersion 查询参数（由 reqwest 统一编码）。
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls", "stream"] }
+# 原生 HTTP 请求：模型代理转发、网页抓取与共享 HTTP 客户端。json 用于请求体编码，
+# rustls 统一 TLS 实现，stream 支持流式读取响应体。
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "stream"] }
 # 网页抓取（web）：中文站点常用 GBK/GB2312，需要按响应字符集解码；reqwest 自身的
 # charset 能力只能走 text()，拿不到字节级限长，因此直接依赖其底层所用的 encoding_rs
 encoding_rs = "0.8"
@@ -49,7 +48,6 @@ russh-sftp = "3.0.1"
 # SSH 凭据保管：密码与私钥口令交给系统凭据管理器，绝不落盘明文
 # apple-native 需显式启用（默认只在 Windows / Linux 生效），三平台按 target 内部条件编译
 keyring = { version = "4.2.0", features = ["apple-native-keyring-store"] }
-minisign-verify = "=0.2.5"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

@@ -12,8 +12,8 @@ use std::process::Command;
 /// 客户端运行任务时会频繁通过 `run_shell`、MCP、`git` 启动 `powershell` / `cmd` / `npx` 这类
 /// 控制台程序；不加 `CREATE_NO_WINDOW` 时 Windows 会为每次 spawn 分配并显示一个控制台窗口，
 /// 一次任务几十条命令就是几十个黑框不停闪。这里集中收口，各 spawn 点只调一次，避免各写一份。
-/// 只设 `CREATE_NO_WINDOW`，**不**叠加 `DETACHED_PROCESS`——后者会让 powershell 启动即静默退出
-/// （见 `updater.rs` 的说明）。非 Windows 平台该函数为空操作。
+/// 只设 `CREATE_NO_WINDOW`，**不**叠加 `DETACHED_PROCESS`——后者会让 powershell 启动即静默退出。
+/// 非 Windows 平台该函数为空操作。
 pub fn hide_console(command: &mut Command) {
     #[cfg(windows)]
     {

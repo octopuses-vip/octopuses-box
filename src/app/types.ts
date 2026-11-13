@@ -420,10 +420,10 @@ export interface ModelOption {
 }
 
 /**
- * 后台下发给当前登录用户的模型（`GET /api/client/models` 的元素）。
+ * 缓存目录下 `models.json` 中的一条模型配置。
  *
- * 列表由服务端按「已授权 + 已启用」过滤并按 id 升序返回，客户端不做二次筛选，
- * 管理台取消勾选后模型会在下次拉取时自然消失。
+ * 用户自行维护接入地址与密钥，字段与旧版管理端下发的模型结构保持一致；
+ * `id` 由本地按下标补齐，不参与任何匹配逻辑。
  */
 export interface RemoteModel {
   /** 模型 ID */
@@ -443,76 +443,10 @@ export interface RemoteModel {
   /**
    * 该模型是否支持图片输入。
    *
-   * 老版本后台不返回该字段，因此为「可选」：`undefined` 表示后台未声明，
-   * 此时由用户在设置页的手动开关决定，判定入口见 `resolveSupportsImages`。
+   * 可选：`undefined` 表示文件里未声明，此时由用户在设置页的手动开关决定，
+   * 判定入口见 `resolveSupportsImages`。
    */
   supportsImages?: boolean;
-}
-
-/**
- * 管理端（octopuses-server）接入地址。
- *
- * 客户端首次启动时由用户填写并随配置持久化，之后每次调用客户端接口都显式带上它；
- * 环境变量 `OCTOPUSES_HOST` / `OCTOPUSES_PORT` 只在首次配置时作为表单预填值。
- */
-export interface Endpoint {
-  /** 主机：可带 https://，不含路径；远程主机默认 HTTPS，本机默认 HTTP */
-  host: string;
-  /** 端口：1-65535 的十进制数字串 */
-  port: string;
-}
-
-/**
- * 模型列表的来源（开发者 Jan）。
- *
- * `remote` 是历史行为：配置管理端地址、登录后由 `/api/client/models` 下发。
- * `local` 表示不连管理端，模型列表改从缓存目录下的 `models.json` 读取，
- * 该文件与 `RemoteModel` 同构，用户可自行填写接入地址与密钥；
- * 此模式下不需要登录，也不检查客户端更新。
- *
- * 两者都不是新装用户的默认值——首次启动由「选择模型来源」页让用户自己挑，
- * store 里用 `ModelSource | null` 表达「还没选」，本类型只描述选完的取值。
- */
-export type ModelSource = "remote" | "local";
-
-/**
- * 一次「检查更新」的结果（`GET /api/client/version/check`）。
- *
- * 该接口免登录，客户端进入主界面后自动查询；服务端在一次响应里同时给出「有无更新」
- * 与最新版本的展示信息，界面直接据此渲染提示，无需再查一次版本详情。
- */
-export interface UpdateCheckResult {
-  /** 客户端上报的当前版本号，服务端原样回显 */
-  currentVersion: string;
-  /** 是否存在比当前版本更新的已启用版本 */
-  hasUpdate: boolean;
-  /** 最新版本号；无已启用版本时空字符串 */
-  latestVersion: string;
-  /** 更新说明，可能为空字符串 */
-  description: string;
-  /** 安装包字节数；无已启用版本时为 0 */
-  fileSize: number;
-  /** 是否强制更新：仅当确有更新且该版本被管理员标记为强制时为真 */
-  forceUpdate: boolean;
-  /** 安装包下载地址；无已启用版本时空字符串 */
-  downloadUrl: string;
-  /** 最新版本的发布时间，可能为空字符串 */
-  publishedAt: string;
-}
-
-/**
- * 更新安装包的下载进度（Rust 侧 `update-download-progress` 事件的负载）。
- *
- * 安装包由客户端自身下载（不弹浏览器），下载中界面按此渲染进度条；
- * `total` 为 0 表示服务端未给出体积，此时只展示已下载量。
- */
-export interface UpdateDownloadProgress {
-  /** 已下载字节数 */
-  downloaded: number;
-  /** 安装包总字节数；未知时为 0 */
-  total: number;
-  /** 下载百分比（0-100）；总量未知时为 0 */
-  percent: number;
 }
 
 /**

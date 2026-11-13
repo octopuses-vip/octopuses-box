@@ -98,7 +98,7 @@ button {
   color: var(--text-2);
 }
 
-/* 应用 logo：标题栏、侧栏品牌位与登录页共用同一张图 */
+/* 应用 logo：标题栏、侧栏品牌位与启动引导页共用同一张图 */
 .brand-mark {
   display: block;
   width: 20px;

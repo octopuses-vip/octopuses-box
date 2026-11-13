@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 
-import { listenTrayCheckUpdate } from "../app/desktop/updates";
 import { effectiveArtifactDir } from "../app/state/artifacts";
 import { selectActiveThread } from "../app/storeSelectors";
 import { useAppStore } from "../app/state";
@@ -18,10 +17,8 @@ import { ProjectDialog } from "../project/ProjectDialog";
 import { CommandPalette } from "./CommandPalette";
 import { PanelSplitter } from "./PanelSplitter";
 import { Sidebar } from "./sidebar/Sidebar";
-import { ModelSourceBadge } from "./sidebar/ModelSourceBadge";
 import { RightPanel } from "./rightpanel/RightPanel";
 import { ThreadView } from "./ThreadView";
-import { UpdateNotice, UpdatePrompt } from "./UpdatePrompt";
 import { WindowControls } from "./WindowControls";
 
 const PAGES: Partial<Record<NavKey, ComponentType>> = {
@@ -181,46 +178,12 @@ export function AppShell() {
     void restoreSessions();
   }, [sessionsRestored, sessionsRestoring, sessionsRestoreError, sessionScope, restoreSessions]);
 
-  // 重启后已处于登录态时补取一次模型连接信息（连接信息不持久化）
+  // 启动时（以及缓存目录切换后）补读一次模型连接信息（连接信息不持久化）
   const modelConfigStatus = useAppStore((state) => state.modelConfigStatus);
   const loadModelConfig = useAppStore((state) => state.loadModelConfig);
   useEffect(() => {
     if (modelConfigStatus === "idle") void loadModelConfig();
   }, [modelConfigStatus, loadModelConfig]);
-
-  // 启动时查一次客户端新版本：该接口免登录，进入主界面即可查询；
-  // 查到新版本由 UpdatePrompt 弹出提示，查不到（含失败）静默跳过。
-  // 本地模式不连管理端，跳过——没有可查的版本源
-  const updateCheckStatus = useAppStore((state) => state.updateCheckStatus);
-  const checkUpdate = useAppStore((state) => state.checkUpdate);
-  const modelSource = useAppStore((state) => state.modelSource);
-  useEffect(() => {
-    if (updateCheckStatus === "idle" && modelSource === "remote") void checkUpdate();
-  }, [updateCheckStatus, checkUpdate, modelSource]);
-
-  // 托盘菜单的「检查更新」：原生侧负责唤起窗口并把点击转成事件，这里接住后发起一次手动检查。
-  // 手动检查带 manual 标记，因此没有新版本时也会给出「已是最新版本」的反馈
-  useEffect(() => {
-    let disposed = false;
-    let stopListening: (() => void) | null = null;
-    void listenTrayCheckUpdate(() => void useAppStore.getState().checkUpdate(true)).then((off) => {
-      if (disposed) off();
-      else stopListening = off;
-    });
-    return () => {
-      disposed = true;
-      stopListening?.();
-    };
-  }, []);
-
-  // 读回上一次更新的结论：更新期间客户端已经退出，安装成败只能事后说明。
-  // 必须等启动检查更新结束再读——检查开始时会清空提示条，先读的话刚写进去的失败原因会被立刻抹掉
-  const consumeUpdateOutcome = useAppStore((state) => state.consumeUpdateOutcome);
-  const updateCheckSettled = updateCheckStatus === "ready" || updateCheckStatus === "error";
-  useEffect(() => {
-    if (!updateCheckSettled) return;
-    void consumeUpdateOutcome();
-  }, [updateCheckSettled, consumeUpdateOutcome]);
 
   // 启动时扫描一次技能并读取产物列表与自动化任务，缓存目录变更后重新读取；
   // 技能扫描同时会刷新技能索引 SKILLS.md
@@ -337,7 +300,6 @@ export function AppShell() {
         </span>
         <span className="spacer" />
         <div className="titlebar__actions">
-          <ModelSourceBadge />
           <IconButton
             icon="search"
             label={`命令面板 (${shortcutHint("K")})`}
@@ -406,8 +368,6 @@ export function AppShell() {
       </div>
 
       <CommandPalette />
-      <UpdatePrompt />
-      <UpdateNotice />
       <NoticeToast />
       <ProjectDialog />
       <AutomationScheduler />

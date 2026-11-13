@@ -21,15 +21,14 @@
   <a href="https://octopuses.vip"><strong>官方网站</strong></a> ·
   <a href="#快速开始">快速开始</a> ·
   <a href="#功能特性">功能特性</a> ·
-  <a href="https://github.com/octopuses-vip/octopuses-server">管理端</a> ·
   <a href="CONTRIBUTING.md">参与贡献</a>
 </p>
 
-octopuses 面向需要统一管理大模型接入的组织与个人。它把「对话、知识库、工程工具、自动化、远程运维」收进同一个桌面客户端：模型接口可以在服务端集中配置，员工安装客户端、填写管理端地址并登录后即可使用获授权的模型；也支持本地模式，直接连接 OpenAI 兼容服务。
+octopuses 是一个本地优先的桌面 AI 工作终端。它把「对话、知识库、工程工具、自动化、远程运维」收进同一个客户端，模型接入由你自己在缓存目录的 `models.json` 中维护，直接连接任意 OpenAI 兼容服务，不依赖任何管理端或账号体系。
 
 同一份代码在 macOS / Windows / Linux 上编译运行，界面与能力保持一致。
 
-> 本项目交付的是**桌面客户端**，不是可直接部署到 Web 服务器的在线聊天网站。开发时的浏览器预览仅用于调试与界面开发，不代表客户端可以在浏览器中完整运行。对应的管理平台（服务端）见 [octopuses-server](https://github.com/octopuses-vip/octopuses-server)。
+> 本项目交付的是**桌面客户端**，不是可直接部署到 Web 服务器的在线聊天网站。开发时的浏览器预览仅用于调试与界面开发，不代表客户端可以在浏览器中完整运行。
 
 ---
 
@@ -65,7 +64,7 @@ octopuses 面向需要统一管理大模型接入的组织与个人。它把「�
 
 ### 模型与会话
 
-- **双模型来源**：首次启动选择「远程管理端」或「本地模型」，之后可在设置中切换。远程模式从服务端读取当前账号已授权的模型列表（含 `baseUrl` 与密钥）；本地模式读取缓存目录下的 `models.json`。
+- **本地模型配置**：模型列表来自缓存目录下的 `models.json`，接入地址与密钥由你自己维护，不需要登录任何服务端。
 - **流式对话**：OpenAI 兼容 `POST {模型服务}/chat/completions`，`stream: true`；思维链与正文分别渲染为「思考」折叠块与正文。
 - **思考强度**：输入区三档滑杆映射为网关的 `reasoning_effort`（`low` / `medium` / `xhigh`）。
 - **多模态输入**：支持粘贴、拖拽与选择图片 / PDF / 文本文件。图片以 `image_url` 随消息发送；文本与 PDF 提取的文字内联为 `<file>` 块。PDF 限 10 MB / 200 页 / 20 万文字字符。
@@ -137,7 +136,7 @@ flowchart TB
     end
 
     subgraph BE["Tauri v2 + Rust（src-tauri/）"]
-        CORE["模型流式代理 · SQLite · PTY · Git · SSH<br/>沙箱 · 工具执行 · 定时任务 · 系统托盘 · 在线更新"]
+        CORE["模型流式代理 · SQLite · PTY · Git · SSH<br/>沙箱 · 工具执行 · 定时任务 · 系统托盘"]
     end
 
     EXT["模型服务 · MCP 服务 · SSH 主机 · 本地文件系统"]
@@ -167,7 +166,6 @@ flowchart TB
 octopuses/
 ├─ src/                       前端（React 19 + TypeScript + Vite）
 │  ├─ app/                    应用骨架：store、router、types、persist、平台差异、桌面能力封装
-│  ├─ auth/                   登录与管理端地址配置
 │  ├─ cache/                  缓存目录配置、日志、会话与产物落盘
 │  ├─ shell/                  主壳：侧栏、消息流、输入区、右栏、终端、命令面板
 │  ├─ conversation/           消息流内容块（思考 / 工具 / 问答 / 差异 / 来源 / 用量）
@@ -183,7 +181,7 @@ octopuses/
 │  ├─ styles/                 设计令牌与全局样式
 │  └─ types/                  第三方类型声明
 ├─ src-tauri/                 Tauri v2 外壳（Rust）
-│  ├─ src/                    会话库、模型代理、PTY、Git、SSH、MCP、沙箱、定时、托盘、更新
+│  ├─ src/                    会话库、模型代理、PTY、Git、SSH、MCP、沙箱、定时、托盘
 │  ├─ capabilities/           Tauri 权限清单
 │  ├─ icons/                  应用图标
 │  └─ tauri.conf.json         应用配置（窗口 / 打包 / 版本）
@@ -262,25 +260,9 @@ pnpm tauri build --bundles app  # 仅打包 macOS .app
 
 ## 首次配置
 
-### 选择模型来源
+### 配置缓存目录
 
-| 方式 | 适用场景 | 需要准备 |
-| --- | --- | --- |
-| 远程管理端 | 组织集中管理账号和模型 | 管理端地址、已分配账号、网络连通性 |
-| 本地模型 | 获准自行维护模型连接 | OpenAI 兼容服务地址、凭据、缓存目录 |
-
-「本地模型」表示连接配置从本机读取，不表示模型一定运行在本机，也不保证离线使用。
-
-### 远程管理端
-
-1. 输入管理员提供的主机名或 IP 和端口，确认连通性检查通过。
-2. 使用分配的账号登录。
-3. 设置缓存目录。
-4. 在会话输入区选择当前账号已授权且已启用的模型。
-
-更换管理端地址后需要重新登录，因为登录凭据由原管理端签发。
-
-管理端服务端的源码与部署说明见 [octopuses-server](https://github.com/octopuses-vip/octopuses-server)。
+首次启动会要求选择缓存目录：会话库、日志、产物与 `models.json` 都写在这里。
 
 ### 本地模型
 
@@ -331,33 +313,14 @@ pnpm tauri build --bundles app  # 仅打包 macOS .app
 
 ## 数据与安全
 
-- 只连接组织或个人明确批准的管理端、模型服务、MCP 服务与 SSH 主机。
+- 只连接你明确批准的模型服务、MCP 服务与 SSH 主机。
 - 发送文件或会话内容前，确认数据分类、服务端处理范围、留存策略与授权范围。
 - SSH 密码与私钥口令由系统钥匙串保管；本地模型 `apiKey` 保存在 `models.json` 中，不要假定所有本地配置都已加密。
 - 模型调用转储默认关闭；开启后会在缓存目录写入请求与执行记录，日志会尽量隐藏常见凭据，但不保证完全脱敏。
 - 「全部自动」审批档仍受静态危险命令拒绝规则约束；仍需关注审批提示与操作目标。
 - 备份时同时考虑缓存目录、各项目目录中的 `output/` 以及 Git 改动。
 
-实际可用工具还取决于当前模型、会话权限、管理员策略、MCP 配置与操作系统授权。功能未出现在界面或工具列表中时，不应假定它在该设备或本轮会话可用。
-
-### 应用内更新签名
-
-应用内更新只信任**编译期固定**的 Minisign 公钥，服务端无法在下发时替换公钥：
-
-```bash
-# 1. 生成密钥对；私钥自行保管，不要提交到仓库
-minisign -G -p octopuses.pub -s octopuses.key
-
-# 2. 构建时注入公钥（取 .pub 文件中的 base64 行）
-OCTOPUSES_UPDATE_PUBLIC_KEY="$(tail -n +2 octopuses.pub)" pnpm tauri build
-
-# 3. 为安装包生成同名签名文件，与安装包一起上传
-minisign -S -s octopuses.key -m <安装包路径>
-```
-
-- 客户端只从 HTTPS 下载与安装包同路径的 `<安装包>.minisig`，地址中不允许包含账号或 fragment。
-- 未注入公钥的发行包会直接拒绝应用内更新，提示「此发行包未配置更新验签公钥」。
-- 签名缺失、下载失败或校验不通过时更新终止，不会回退到未签名安装。
+实际可用工具还取决于当前模型、会话权限、MCP 配置与操作系统授权。功能未出现在界面或工具列表中时，不应假定它在该设备或本轮会话可用。
 
 ---
 
@@ -415,23 +378,16 @@ pnpm test
 ## 常见问题
 
 <details>
-<summary><strong>无法连接管理端</strong></summary>
+<summary><strong>模型列表为空</strong></summary>
 
-核对地址与端口是否由管理员提供、设备是否在允许的网络内、DNS / 防火墙是否放行。连通性检查成功不代表账号或模型已授权。
-
-</details>
-
-<details>
-<summary><strong>登录成功但模型列表为空</strong></summary>
-
-远程模式请联系管理员核对账号授权与模型启用状态；本地模式请检查缓存目录下的 `models.json` 是否有效、是否至少包含一条模型配置。
+检查缓存目录下的 `models.json` 是否有效、是否至少包含一条模型配置，然后在设置页点「重新读取本地文件」。
 
 </details>
 
 <details>
 <summary><strong>模型可以选择但请求失败</strong></summary>
 
-分别检查模型服务网络、`baseUrl`、凭据、模型 `code` 与服务端状态。管理端可达不代表模型服务可达。提供错误信息前请移除地址、密钥、账号与业务数据。
+分别检查模型服务网络、`baseUrl`、凭据、模型 `code` 与服务端状态。提供错误信息前请移除地址、密钥与业务数据。
 
 </details>
 
@@ -457,9 +413,9 @@ pnpm test
 </details>
 
 <details>
-<summary><strong>更新或安装包有安全提示</strong></summary>
+<summary><strong>安装包有安全提示</strong></summary>
 
-不要关闭系统安全功能来绕过提示。请通过可信渠道向发布管理员确认安装包来源、签名、公证状态及校验和。
+不要关闭系统安全功能来绕过提示。请通过可信渠道确认安装包来源、签名、公证状态及校验和。
 
 </details>
 
@@ -473,5 +429,5 @@ pnpm test
 
 <p align="center">
   <sub>Copyright © 2026 octopuses · MIT License</sub><br />
-  <sub><a href="https://octopuses.vip">octopuses.vip</a> · <a href="https://github.com/octopuses-vip/octopuses-box">源代码</a> · <a href="https://github.com/octopuses-vip/octopuses-server">管理端</a></sub>
+  <sub><a href="https://octopuses.vip">octopuses.vip</a> · <a href="https://github.com/octopuses-vip/octopuses-box">源代码</a></sub>
 </p>

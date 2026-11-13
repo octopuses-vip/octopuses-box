@@ -6,13 +6,11 @@ import type {
   AutomationRun,
   DiffFile,
   DirEntryInfo,
-  Endpoint,
   McpServer,
   McpTool,
   Message,
   MessageAttachment,
   ModelOption,
-  ModelSource,
   NavKey,
   ParallelBatch,
   ParallelItem,
@@ -29,8 +27,6 @@ import type {
   StreamItem,
   Thread,
   ThreadRunState,
-  UpdateCheckResult,
-  UpdateDownloadProgress,
   UsageRecord,
   UsageSummary,
 } from "./types";
@@ -43,89 +39,11 @@ import type { Platform } from "./platform";
 import type { SchemePreference, ThemeId } from "./theme";
 
 export interface AppStore {
-  /* ---------- 登录与缓存路径 ---------- */
-  currentUser: string | null;
-  /**
-   * 登录令牌（`POST /api/client/login` 下发）。
-   *
-   * 后续所有需要鉴权的客户端接口都靠它，随登录态一起持久化，实现重启免登录。
-   */
-  authToken: string | null;
-  /**
-   * 管理端（octopuses-server）接入地址。
-   *
-   * 首次启动时由用户在「配置管理端地址」页填写并持久化；为 `null` 表示从未配置过，
-   * 此时路由会先停在地址页。登出不会清除它——地址是机器级配置，不属于某次登录。
-   */
-  endpoint: Endpoint | null;
-  /**
-   * 写入管理端地址。
-   *
-   * 地址真正发生变化时会一并清空登录态：令牌是旧服务端签发的，换服务端后必然无效。
-   */
-  setEndpoint: (endpoint: Endpoint) => void;
-  /** 系统产生的文件与临时内容的统一落盘目录，首次登录时配置 */
+  /* ---------- 缓存路径 ---------- */
+  /** 系统产生的文件与临时内容的统一落盘目录，首次启动时配置 */
   cachePath: string | null;
-  /**
-   * 登录：成功返回 `{ ok: true }`，失败返回 `{ ok: false, error }` 并把服务端中文文案
-   * 原样交给登录页展示（凭据错误、账号被禁用、连不上服务端各有各的文案）。
-   * 不抛异常，避免调用方到处写 try/catch。
-   */
-  login: (username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  logout: () => void;
   setCachePath: (path: string) => void;
   clearCachePath: () => void;
-
-  /* ---------- 客户端版本更新 ---------- */
-  /**
-   * 一次更新检查的结果：服务端给出的最新版本信息；尚未检查、或服务端没有已启用版本时为 null。
-   *
-   * 不持久化——版本随时可能更新，每次启动都重新查询一次才准确。
-   */
-  updateInfo: UpdateCheckResult | null;
-  /** 更新检查的进行状态；`error` 表示这次没查成（如服务端不可达），界面据此静默跳过 */
-  updateCheckStatus: "idle" | "checking" | "ready" | "error";
-  /**
-   * 检查客户端是否有新版本。
-   *
-   * 接口免登录，由主界面挂载时自动调用一次；自动调用失败只在状态里留痕而不打扰用户，
-   * 避免网络波动在启动瞬间弹出与用户当前操作无关的错误提示。
-   * 托盘菜单「检查更新」是用户主动发起（`manual`），无论有没有新版本都要回一句明确结果。
-   */
-  checkUpdate: (manual?: boolean) => Promise<void>;
-  /**
-   * 手动检查更新的结果提示（「已是最新版本」/「检查失败」）。
-   *
-   * 只服务于托盘菜单这类用户主动触发的检查：查到新版本走更新弹窗，
-   * 没有新版本时若什么都不显示，用户会以为菜单点了没反应。自动检查始终留空，不打扰。
-   */
-  updateCheckNotice: string | null;
-  /** 关掉手动检查的结果提示（提示条自动消失时调用） */
-  clearUpdateCheckNotice: () => void;
-  /** 用户选择「稍后再说」后关掉本次更新提示；强制更新时界面不提供该入口 */
-  updatePromptDismissed: boolean;
-  dismissUpdatePrompt: () => void;
-  /**
-   * 应用内更新的执行状态：`downloading` 下载安装包中、`installing` 已交给更新进程
-   * （客户端即将退出，由子进程完成安装与重启）、`error` 失败可重试。
-   */
-  updateInstallStatus: "idle" | "downloading" | "installing" | "error";
-  /** 安装包下载进度；未开始下载时为 null */
-  updateDownloadProgress: UpdateDownloadProgress | null;
-  /** 更新失败的提示文案，成功后清空 */
-  updateInstallError: string | null;
-  /**
-   * 触发更新：Windows 下由客户端自行下载安装包并交给独立进程完成安装（不弹浏览器），
-   * 其余平台暂未内置更新器，退回用浏览器打开下载地址手动安装。
-   */
-  installUpdate: () => Promise<void>;
-  /**
-   * 读回上一次更新的结论并在界面上说明（开发者 Jan）。
-   *
-   * 更新期间客户端已经退出，安装成败只能事后读取：成功的静默略过（客户端已经带着新版本起来了），
-   * 失败的给出原因与日志路径，免得用户以为「更新过了但版本没变」。
-   */
-  consumeUpdateOutcome: () => Promise<void>;
 
   /** 自动放行 Rust 后端识别出的只读或验证命令；危险命令始终拒绝 */
   trustReadOnlyCommands: boolean;
@@ -343,16 +261,16 @@ export interface AppStore {
   rightPanelMaximized: boolean;
   rightTab: RightTab;
   model: string;
-  /** 可选模型列表，由后台下发的授权模型生成 */
+  /** 可选模型列表，由本地 models.json 中的模型生成 */
   modelOptions: ModelOption[];
-  /** 后台下发的授权模型原始列表（含 baseUrl / apiKey），仅保存在内存，每次登录重新获取 */
+  /** 本地 models.json 的模型原始列表（含 baseUrl / apiKey），仅保存在内存，随缓存目录重新读取 */
   remoteModels: RemoteModel[];
-  /** 当前选中模型派生出的连接信息，仅保存在内存，每次登录重新获取 */
+  /** 当前选中模型派生出的连接信息，仅保存在内存，随缓存目录重新读取 */
   modelConfig: ModelConnection | null;
   /**
    * 是否允许向模型输入图片（本地手动开关）。
    *
-   * 仅在后台未下发 `supports_images` 时参与判定；后台下发时以接口值为准，
+   * 仅在模型条目未声明 `supportsImages` 时参与判定；条目已声明时以文件值为准，
    * 本开关只作展示。判定统一走 `resolveSupportsImages`。
    */
   imageInputEnabled: boolean;
@@ -362,7 +280,7 @@ export interface AppStore {
    * 配色主题。
    *
    * 与 `imageInputEnabled` 同属设备级偏好：描述的是「这台机器上的观感」，
-   * 不属于任何一次登录，因此登出与切换管理端地址都不重置它。
+   * 因此切换缓存目录也不重置它。
    */
   themeId: ThemeId;
   /** 明暗偏好：跟随系统 / 浅色 / 深色 */
@@ -374,21 +292,6 @@ export interface AppStore {
   modelConfigStatus: LoadStatus;
   modelConfigError: string | null;
   loadModelConfig: () => Promise<void>;
-  /**
-   * 模型列表来源：远程管理端下发，或读本机缓存目录下的 `models.json`。
-   *
-   * 属于设备级偏好（跟机器走，不跟登录走），因此登出与切换管理端地址都不重置它。
-   * `null` 表示**用户还没选过**（全新安装），路由据此先停在「选择模型来源」页；
-   * 老版本升级时补的是 `"remote"` 而不是 `null`，避免升级后被要求重新选择。
-   */
-  modelSource: ModelSource | null;
-  /**
-   * 切换模型来源。
-   *
-   * 两条源的模型列表互不相干，切换时必须清空已加载的列表与派生连接，
-   * 让状态回到 `idle` 由界面重新加载；登录态本身不动，切回远程时不必重新登录。
-   */
-  setModelSource: (source: ModelSource) => void;
   /**
    * 校验并保存本地模型 JSON，返回校验错误列表（空数组表示成功）。
    *

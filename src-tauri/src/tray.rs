@@ -2,11 +2,11 @@
 //!
 //! 客户端带自动化调度，关掉窗口不应该让定时任务停摆，因此这里拦截关窗请求改为隐藏窗口，
 //! 并在托盘区常驻一个图标作为恢复入口：左键单击恢复主界面，右键菜单提供
-//! 「显示主界面 / 检查更新 / 退出」。真正的退出只从托盘菜单走，避免用户误关导致后台任务被中断。
+//! 「显示主界面 / 退出」。真正的退出只从托盘菜单走，避免用户误关导致后台任务被中断。
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, Runtime, WindowEvent};
+use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 
 /// 主窗口的 label，与 `tauri.conf.json` 中窗口配置的默认 label 一致。
 ///
@@ -16,12 +16,8 @@ pub(crate) const MAIN_WINDOW: &str = "main";
 const TRAY_ID: &str = "octopuses-tray";
 /// 托盘菜单项 id：恢复并聚焦主界面
 const MENU_SHOW: &str = "tray-show";
-/// 托盘菜单项 id：手动检查客户端更新
-const MENU_CHECK_UPDATE: &str = "tray-check-update";
 /// 托盘菜单项 id：退出应用
 const MENU_QUIT: &str = "tray-quit";
-/// 推给前端的事件名：托盘菜单点了「检查更新」，由前端发起一次手动检查
-const EVENT_CHECK_UPDATE: &str = "tray-check-update";
 
 /// 取出主窗口并恢复到前台（开发者 Jan）
 ///
@@ -36,22 +32,11 @@ fn restore_main_window<R: Runtime>(app: &AppHandle<R>) {
     let _ = window.set_focus();
 }
 
-/// 托盘菜单点了「检查更新」（开发者 Jan）
-///
-/// 先把主界面唤到前台，再通知前端发起一次手动检查。之所以必须在原生侧唤起窗口：
-/// 菜单是从隐藏到托盘的状态下点的，检查结果（更新弹窗或「已是最新」提示）都画在窗口里，
-/// 窗口不在前台用户就看不到任何反馈。窗口关闭只是隐藏、webview 并未销毁，事件一定有人接。
-fn request_update_check<R: Runtime>(app: &AppHandle<R>) {
-    restore_main_window(app);
-    let _ = app.emit(EVENT_CHECK_UPDATE, ());
-}
-
 /// 创建常驻托盘图标与右键菜单（开发者 Jan）
 fn install_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, MENU_SHOW, "显示主界面", true, None::<&str>)?;
-    let check_update = MenuItem::with_id(app, MENU_CHECK_UPDATE, "检查更新", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, MENU_QUIT, "退出", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &check_update, &quit])?;
+    let menu = Menu::with_items(app, &[&show, &quit])?;
 
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
@@ -59,7 +44,6 @@ fn install_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             MENU_SHOW => restore_main_window(app),
-            MENU_CHECK_UPDATE => request_update_check(app),
             MENU_QUIT => {
                 crate::trace::write("托盘菜单「退出」请求结束进程");
                 app.exit(0)

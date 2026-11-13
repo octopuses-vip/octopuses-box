@@ -88,7 +88,7 @@
   color: var(--text-3);
 }
 
-/* ============================ 登录页与通用面板 ============================ */
+/* ============================ 启动引导页与通用面板 ============================ */
 
 .login {
   height: 100%;
@@ -145,102 +145,6 @@
   align-items: center;
   gap: 10px;
   margin-top: 4px;
-}
-
-/*
- * 登录页底部的本地模式出口（开发者 Jan）
- *
- * 一条分隔线把「登录」与「不登录的另一种走法」分开：两者是互斥的路线，不是同一层级的
- * 两个按钮。右侧用的是 `btn--ghost btn--sm`，低强调但仍是可见的按钮——纯文字链在一张
- * 深色卡片上对比度不足，容易被当成说明文字跳过，而这里恰恰是走投无路的用户在找的东西。
- */
-.login__alt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  font-size: var(--fs-sm);
-}
-
-/*
- * 首次启动的「模型来源」选项卡（开发者 Jan）
- *
- * 整张卡片可点，而不是「选中 + 再点确认」——两个选项只有两个取值，
- * 多一步确认只是多一次点击。说明文字直接写在选项里，用户点之前就知道
- * 这条路上要不要登录、要不要填管理端地址。
- */
-.source-choice-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.source-choice {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-0);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
-}
-
-.source-choice:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-2);
-}
-
-.source-choice__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--bg-2);
-  color: var(--accent);
-}
-
-.source-choice__main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  /* 弹性子项默认 min-width: auto 会拒绝收缩到内容以下，长说明会把卡片撑宽 */
-  min-width: 0;
-}
-
-.source-choice__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--fs-md);
-  font-weight: 600;
-}
-
-.source-choice__badge {
-  padding: 1px 7px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-}
-
-.source-choice__desc {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
 }
 
 .path-box {

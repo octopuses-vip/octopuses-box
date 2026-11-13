@@ -23,8 +23,6 @@ mod skills;
 mod ssh;
 mod trace;
 mod tray;
-mod updater;
-mod update_signature;
 mod web;
 mod workspace;
 
@@ -131,16 +129,9 @@ pub fn run() {
             session_db::session_db_delete,
             session_db::usage_record,
             session_db::usage_summary,
-            client_api::client_default_endpoint,
-            client_api::client_probe,
-            client_api::client_login,
-            client_api::client_models,
-            client_api::client_check_update,
             model_proxy::model_stream,
             model_proxy::model_abort,
             model_proxy::model_fetch,
-            updater::update_download_and_install,
-            updater::update_take_result,
             mcp::mcp_list_servers,
             mcp::mcp_save_server,
             mcp::mcp_delete_server,

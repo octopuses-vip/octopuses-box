@@ -10,7 +10,7 @@ import { Icon } from "../components/Icon";
 import { logCacheEvent } from "./logger";
 
 /**
- * 首次登录必填步骤：配置缓存路径。
+ * 首次启动必填步骤：配置缓存路径。
  * 确认后系统产生的文件与临时内容都会写入该目录，未配置不进入主界面。
  */
 export function CacheSetupPage() {
@@ -76,7 +76,7 @@ export function CacheSetupPage() {
         </div>
         <h1 className="login__title">配置缓存路径</h1>
         <p className="login__sub">
-          {APP_NAME} 会把运行过程中产生的文件与临时内容统一写入这个目录，首次登录需要先完成配置。
+          {APP_NAME} 会把运行过程中产生的文件与临时内容统一写入这个目录，首次启动需要先完成配置。
         </p>
 
         <div>

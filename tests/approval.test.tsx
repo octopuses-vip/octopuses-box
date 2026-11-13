@@ -39,6 +39,7 @@ test("升级清理评审偏好，保留缓存路径与撤销名单", () => {
   });
   assert.equal("autoReviewModel" in state, false);
   assert.equal("autoReviewMaxPerRun" in state, false);
+  assert.equal("modelSource" in state, false);
   assert.equal(state.cachePath, "/test/cache");
   assert.deepEqual(state.autoApprovalDenylist, ["old command"]);
 });

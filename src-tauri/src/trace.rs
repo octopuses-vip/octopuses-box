@@ -1,10 +1,8 @@
 //! 客户端启动与退出追踪（开发者 Jan）：把原生侧的关键节点落到临时目录的文件里。
 //!
-//! 应用内更新会先退出客户端、再由更新进程把它重新拉起。若新实例起来后很快自行消失，
-//! 用户只能看到「点了更新，客户端没了」；而进程脱离控制台，任何输出都留不下痕迹。
-//! 因此这里把启动、窗口生命周期与退出原因追加写到 `%TEMP%\octopuses-update\client-trace.log`，
-//! 与更新进程的日志同目录，便于把「更新进程拉起客户端 → 客户端启动 → 窗口事件 → 退出」
-//! 这条链路一次看完。
+//! 客户端从桌面图标启动后脱离控制台，任何输出都留不下痕迹；若进程起来后很快自行消失，
+//! 用户只能看到「点了一下，客户端没了」。因此这里把启动、窗口生命周期与退出原因追加写到
+//! `%TEMP%\octopuses-update\client-trace.log`，事后按时间线还原整条链路。
 //!
 //! 追踪只服务于排查：任何写入失败都静默忽略，诊断手段不能变成新的故障点。
 
@@ -13,9 +11,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::updater;
-
-/// 追踪日志文件名，位于更新临时目录内，与更新进程的日志并存
+/// 追踪日志所在目录名（位于系统临时目录下），与用户数据目录分开存放，便于整体清理
+const TRACE_DIR_NAME: &str = "octopuses-update";
+/// 追踪日志文件名
 const TRACE_FILE_NAME: &str = "client-trace.log";
 
 /// 秒／分／时／天各自的秒数，用于把纪元秒拆成时刻
@@ -43,10 +41,11 @@ fn open_log() -> std::io::Result<std::fs::File> {
 
 /// 追踪日志的完整路径（开发者 Jan）。
 ///
-/// 由本模块统一持有：写入与「更新脚本清空旧记录」两处都取自这里，
-/// 文件名只有一处定义，改路径时不会漏改。
+/// 由本模块统一持有，文件名只在上面定义一处，改路径时不会漏改。
 pub(crate) fn log_path() -> PathBuf {
-    updater::temp_dir().join(TRACE_FILE_NAME)
+    std::env::temp_dir()
+        .join(TRACE_DIR_NAME)
+        .join(TRACE_FILE_NAME)
 }
 
 /// `时:分:秒.毫秒Z` 形式的 UTC 时间戳（开发者 Jan）。

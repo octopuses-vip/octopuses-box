@@ -2,7 +2,7 @@
  * 模型服务调用封装：走 OpenAI 兼容的 `/chat/completions` 流式接口。
  *
  * 浏览器演示环境（vite dev）直接 `fetch`；Tauri 桌面窗口改由 Rust 侧代理后回传原始 SSE 文本：
- * 管理端下发的网关在**成功响应**里回了两条 `Access-Control-Allow-Origin`，而该响应头不是列表型头，
+ * 部分 OpenAI 兼容网关在**成功响应**里回了两条 `Access-Control-Allow-Origin`，而该响应头不是列表型头，
  * 按 Fetch 规范出现多个取值即判定为跨域失败，WebView 里只会抛 `TypeError: Load failed`。
  * 协议解析只有下面这一份实现，两条链路区别仅在于「文本从哪里来」。
  */

@@ -31,8 +31,8 @@ export interface ThemeController {
  * 把三样东西接起来：store 里的偏好、系统当前的实际深浅色、`<html>` 上的主题属性。
  * 「跟随系统」时系统变化会实时反映到界面；手动指定时系统变化不改动最终模式，界面保持不动。
  *
- * 必须挂在 `App` 顶层而不是 `AppShell`：地址页、登录页、缓存目录页都渲染在 `AppShell`
- * 之外，挂低了这些界面就不会跟随主题。
+ * 必须挂在 `App` 顶层而不是 `AppShell`：缓存目录页渲染在 `AppShell`
+ * 之外，挂低了该界面就不会跟随主题。
  */
 export function useTheme(): ThemeController {
   const themeId = useAppStore((state) => state.themeId);
