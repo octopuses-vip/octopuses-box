@@ -130,19 +130,20 @@ octopuses 面向需要统一管理大模型接入的组织与个人。它把「�
 
 ## 架构
 
-```text
-┌────────────────────────────────────────────────────┐
-│ React 19 + TypeScript（src/）                      │
-│ 会话 / 知识库 / 工具 / 自动化 / 设置 / 右栏预览      │
-└──────────────────────┬─────────────────────────────┘
-                       │ Tauri IPC（invoke / event）
-┌──────────────────────▼─────────────────────────────┐
-│ Tauri v2 + Rust（src-tauri/）                      │
-│ 模型流式代理 / SQLite / PTY / Git / SSH / 沙箱 /    │
-│ 工具执行 / 定时任务 / 系统托盘 / 在线更新            │
-└──────────────────────┬─────────────────────────────┘
-                       │ HTTP / SSE / stdio / SQLite
-        模型服务 · MCP 服务 · SSH 主机 · 本地文件系统
+```mermaid
+flowchart TB
+    subgraph FE["React 19 + TypeScript（src/）"]
+        UI["会话 · 知识库 · 工具 · 自动化 · 设置 · 右栏预览"]
+    end
+
+    subgraph BE["Tauri v2 + Rust（src-tauri/）"]
+        CORE["模型流式代理 · SQLite · PTY · Git · SSH<br/>沙箱 · 工具执行 · 定时任务 · 系统托盘 · 在线更新"]
+    end
+
+    EXT["模型服务 · MCP 服务 · SSH 主机 · 本地文件系统"]
+
+    FE -- "Tauri IPC（invoke / event）" --> BE
+    BE -- "HTTP / SSE / stdio / SQLite" --> EXT
 ```
 
 几条贯穿全局的设计约束：
