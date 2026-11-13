@@ -1,0 +1,853 @@
+
+.diff-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.diff-file__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.diff-file__stat {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  font-size: var(--fs-xs);
+}
+
+.stat-add {
+  color: var(--diff-add-text);
+}
+.stat-del {
+  color: var(--diff-del-text);
+}
+
+.diff-line {
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 20px;
+  white-space: pre;
+}
+
+.diff-line__no {
+  flex: 0 0 auto;
+  width: 40px;
+  text-align: right;
+  padding-right: 8px;
+  color: var(--text-3);
+  background: var(--bg-1);
+  user-select: none;
+}
+
+.diff-line__sign {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  color: var(--text-3);
+}
+
+.diff-line__text {
+  flex: 1 1 auto;
+  padding-right: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.diff-line--add {
+  background: var(--diff-add-bg);
+}
+.diff-line--add .diff-line__no {
+  background: var(--diff-add-gutter);
+}
+.diff-line--add .diff-line__sign,
+.diff-line--add .diff-line__text {
+  color: var(--diff-add-text);
+}
+
+.diff-line--del {
+  background: var(--diff-del-bg);
+}
+.diff-line--del .diff-line__no {
+  background: var(--diff-del-gutter);
+}
+.diff-line--del .diff-line__sign,
+.diff-line--del .diff-line__text {
+  color: var(--diff-del-text);
+}
+
+.diff-comment {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 6px 12px 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.diff-comment__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: var(--fs-sm);
+}
+
+.avatar--sm {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+}
+
+/* ---- sources 卡片 ---- */
+
+.sources-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 10px 12px;
+}
+
+.sources-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.source-row {
+  display: flex;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  width: 100%;
+  color: var(--text-2);
+}
+
+.source-row:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.source-row__index {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  font-size: var(--fs-xs);
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+}
+
+.source-row__title {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+}
+
+.source-row__url {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- Working 指示 ---- */
+
+.working {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: var(--fs-base);
+}
+
+.working__time {
+  color: var(--text-2);
+}
+
+.working__hint {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  border-top-color: var(--text-1);
+  animation: spin 720ms linear infinite;
+}
+
+/* ---- 打字光标 ---- */
+
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--text-1);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+/* ---- markdown ---- */
+
+.md {
+  font-weight: 450;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.md img {
+  max-width: 100%;
+  height: auto;
+}
+
+.md > *:first-child {
+  margin-top: 0;
+}
+.md > *:last-child {
+  margin-bottom: 0;
+}
+
+.md h1,
+.md h2,
+.md h3 {
+  line-height: 1.4;
+  margin: 18px 0 8px;
+}
+.md h1 {
+  font-size: 22px;
+}
+.md h2 {
+  font-size: 19px;
+}
+.md h3 {
+  font-size: 16px;
+}
+.md h4 {
+  font-size: var(--fs-md);
+  margin: 16px 0 6px;
+}
+.md p {
+  margin: 8px 0;
+}
+.md ul,
+.md ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.md li {
+  margin: 4px 0;
+}
+.md code {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.md pre {
+  max-width: 100%;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.md pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+/* 代码块外层容器：为右上角的复制按钮提供定位基准，本身不改变 <pre> 的间距与滚动 */
+.md-code {
+  position: relative;
+}
+/* 补回直接子级时代的首尾去边距（.md > *:first-child / :last-child），否则首个代码块会多出一段上边距 */
+.md-code:first-child > pre {
+  margin-top: 0;
+}
+.md-code:last-child > pre {
+  margin-bottom: 0;
+}
+/* 代码块复制按钮：默认隐藏，悬停代码块或键盘聚焦到它时浮出 */
+.md-code__copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-1);
+  color: var(--text-3);
+  opacity: 0;
+  transition:
+    opacity var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease),
+    background var(--dur-base) var(--ease);
+}
+.md-code:hover .md-code__copy,
+.md-code__copy:focus-visible {
+  opacity: 1;
+}
+.md-code__copy:hover {
+  color: var(--text-1);
+  background: var(--bg-3);
+}
+.md table {
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: var(--fs-sm);
+  width: 100%;
+}
+.md th,
+.md td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+.md th {
+  background: var(--bg-2);
+}
+.md a {
+  color: var(--info);
+  overflow-wrap: anywhere;
+}
+.md blockquote {
+  margin: 8px 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-2);
+}
+
+/* ============================ Composer ============================ */
+
+.composer-wrap {
+  flex: 0 0 auto;
+  padding: 8px 20px 14px;
+}
+
+.composer-inner {
+  width: min(100%, var(--composer-max-width));
+  margin: 0 auto;
+}
+
+/* 会话队列：输入框上方逐条显示排队中的请求（开发者 Jan） */
+.queue-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-2);
+}
+
+.queue-strip__title {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.queue-strip__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.queue-strip__text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.queue-strip__attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  color: var(--text-2);
+}
+
+/* 排队条上的取消按钮：排队中的请求没有运行句柄，停止按钮碰不到，只能从这里摘掉 */
+.queue-strip__cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+}
+
+.queue-strip__cancel:hover {
+  background: var(--bg-3);
+  color: var(--danger);
+}
+
+.composer {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--bg-input);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.composer--focused {
+  border-color: var(--border-focus);
+}
+
+/* 拖拽文件进入输入区时的虚线高亮 */
+.composer--drop {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+/* 输入区待发送的附件 */
+.attach-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  height: 30px;
+  padding: 0 6px 0 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.attach-chip__thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.attach-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-chip__size {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.attach-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 0;
+  color: var(--warning);
+  font-size: var(--fs-xs);
+}
+
+.composer__input {
+  font-weight: 450;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  padding: 16px 16px 8px;
+  max-height: 220px;
+  min-height: 64px;
+  line-height: 1.55;
+  font-size: var(--fs-md);
+}
+
+.composer__input::placeholder {
+  color: var(--text-3);
+}
+
+/*
+ * 输入区工具栏（开发者 Jan）：名称截断；行本身禁止换行——
+ * 若允许换行，空间不足时右组（＋/发送/停止）会先被挤到第二行，
+ * 选择器组独占整行后探针测出「放得下」，收纳永不触发，平铺换行态自洽卡死。
+ * 空间压力必须始终落在选择器组上：组宽被压缩 → 探针判定放不下 → 收进「⋯」弹层。
+ */
+.composer__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 6px 10px 10px 12px;
+}
+
+/* 行内分组：组内控件同进退，避免其中某个被单拎出来压到 min-content 后逐字换行 */
+.composer__row-group {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/*
+ * 组内每个控件都要允许收缩（开发者 Jan）：选择器外层是 `position: relative` 的 div，
+ * 作为弹性子项默认 `min-width: auto`，会拒绝收缩到内容宽度以下，于是长模型名直接把行撑爆。
+ */
+.composer__row-group > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.composer__row .chip {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 选择器外层是带 position:relative 的 div，窄窗口下也必须允许其中的 chip 截断。 */
+.composer__row-group > * > .chip {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 模型与强度作为同一个换行单元，窄栏也不把强度按钮单独挤到下一行。 */
+.composer__model-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+}
+
+/*
+ * 溢出测量探针（开发者 Jan）：常驻渲染全部选择器，绝对定位、不可见、不参与布局，
+ * 只用于量出「铺开时的自然总宽」。top 取负值避免把滚动区域撑出视口。
+ */
+.composer__probe {
+  position: absolute;
+  top: -60px;
+  left: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 「更多」收纳弹层：两行各放一个选择器，行内 chip 撑满可用宽度 */
+.composer__more-menu {
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.composer__more-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+}
+
+.composer__more-row + .composer__more-row {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.composer__more-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.composer__model-group > :first-child {
+  min-width: 0;
+  max-width: 220px;
+}
+
+.composer__model-group > :first-child > .chip {
+  max-width: 100%;
+}
+
+/*
+ * 右侧一组（附件 + 运行按钮）贴右（开发者 Jan）。
+ *
+ * 用 `margin-left: auto` 而不是容器的 `justify-content: space-between`：
+ * 选择器组收缩时右组始终贴右，行已禁止换行，右组不会落到第二行。
+ */
+.composer__row-group--end {
+  flex: 0 0 auto;
+  margin-left: auto;
+  /* 右组是运行入口，不能被压缩：宁可左边的名称截断，也不能让发送按钮变形或点不到 */
+  flex-shrink: 0;
+}
+
+.composer__row-group--end .chip {
+  border-color: transparent;
+  padding-inline: 6px;
+}
+
+.chip {
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  /* 同上：不许逐字换行，宁可参与整组换行或溢出，也不要把标签排成竖列 */
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.chip--active {
+  border-color: var(--border-strong);
+  color: var(--text-1);
+  background: var(--bg-3);
+}
+
+.chip--accent {
+  background: var(--accent);
+  color: var(--text-on-strong);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.chip--accent:hover {
+  background: var(--accent-hover);
+  color: var(--text-on-strong);
+}
+
+/*
+ * 权限档位为「全部自动」时的提示色（开发者 Jan）。
+ *
+ * 这一档下命令不再逐条确认，是三种档位里唯一会静默执行写操作的，因此不能和另外两档长得一样：
+ * 用警示色让用户扫一眼输入框就知道自己当前处在「不打断」状态，不必点开选择器确认。
+ */
+.chip--warn {
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+/*
+ * 选择器里的名称文本（开发者 Jan）：模型名与 Agent 名由后台下发，长度不可控，
+ * 完整渲染会把控件行撑到换行，输入框高度随之跳变。这里让它随可用宽度收缩并省略号收尾，
+ * 完整名称由调用方放进按钮的 title 悬停查看。
+ */
+.chip__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.send-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-on-strong);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.send-btn:disabled {
+  background: var(--bg-3);
+  color: var(--text-3);
+  cursor: default;
+}
+
+.send-btn--stop {
+  background: var(--text-1);
+}
+
+.effort-picker {
+  flex-shrink: 0;
+}
+
+.effort-picker__trigger {
+  border-color: transparent;
+  padding-inline: 6px;
+}
+
+.menu.effort-picker__panel {
+  left: 12px;
+  width: min(260px, calc(100% - 24px));
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--radius-xl);
+}
+
+.effort-picker__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 10px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.effort-picker__model {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+}
+
+.effort-picker__value {
+  flex-shrink: 0;
+}
+
+.effort-picker__control {
+  padding: 10px;
+  background: var(--bg-3);
+  border-radius: var(--radius-lg);
+}
+
+.effort-picker__track {
+  position: relative;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--info) var(--effort-progress), var(--bg-active) var(--effort-progress));
+}
+
+.effort-picker__ticks {
+  position: absolute;
+  inset: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.effort-picker__ticks span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-2);
+  opacity: 0.6;
+}
+
+.effort-picker__track input {
+  position: relative;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 26px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  cursor: pointer;
+}
+
+.effort-picker__track input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--switch-knob);
+  box-shadow: 0 1px 4px var(--overlay);
+}
+
+.effort-picker__track input::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--switch-knob);
+  box-shadow: 0 1px 4px var(--overlay);
+}
+
+.effort-picker__track input::-moz-range-track {
+  background: transparent;
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+}
+
+.segmented__item {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 4px 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.segmented__item:hover {
+  color: var(--text-1);
+}
+
+.segmented__item--active {
+  background: var(--bg-3);
+  color: var(--text-1);
+}

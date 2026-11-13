@@ -1,0 +1,13 @@
+# 构建产物
+/target
+**/*.rs.bk
+
+# 运行产物（审计与审批记录、临时目录）
+.octopuses/audit.jsonl
+.octopuses/approvals.jsonl
+.octopuses/tmp/
+
+# 系统与编辑器
+.DS_Store
+.idea/
+.vscode/

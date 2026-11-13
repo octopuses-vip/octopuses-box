@@ -1,0 +1,52 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+node_modules
+dist
+dist-ssr
+*.local
+
+# 本地 CV 资产：构建期由 `pnpm cv:assets` 生成（WASM / 语言包 / ONNX 模型，约 30-40MB）
+/public/cv
+
+# CLI 子目录（独立 Cargo workspace）的构建产物
+/ots-cli/target
+
+# Editor directories and files
+.vscode/*
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+output/
+
+# 本地调试残留：会话转储、临时补丁与排查笔记，不入库
+thread-*.jsonl
+debug-*.md
+*.patch
+
+# 内部流程文件：AI 协作规范与功能变更登记，仅保留在本地
+AGENTS.md
+update.md
+
+# 凭据、运行数据和本地分享产物
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.db-wal
+*.db-shm
+.trae-html-share-packages/
+.screenshots/

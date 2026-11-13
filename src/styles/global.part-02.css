@@ -1,0 +1,844 @@
+
+.thread-item__copy:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* 行末操作组（复制 / 重命名 / 归档 / 删除）：悬停整行或键盘聚焦时整体出现 */
+.thread-item__actions {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.thread-item:hover .thread-item__actions,
+.thread-item__actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 组内按钮改为静态排布：定位与显隐交给外层操作组统一控制 */
+.thread-item__actions .thread-item__copy {
+  position: static;
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/*
+  运行中的任务：行末常驻一个停止入口，不靠悬停出现（开发者 Jan）。
+  运行状态按会话记录，切到别的任务后输入区那个停止按钮就跟着没了，
+  没有这里的入口，后台跑着的任务就只能等它自己结束。
+*/
+.thread-item__stop {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  color: var(--danger);
+}
+
+.thread-item__stop:hover {
+  background: var(--danger);
+  color: var(--text-on-strong);
+}
+
+/* 停止入口常驻，标题先为它让位；悬停才出现的操作组再往左挪一格，别压住停止按钮 */
+.thread-item--running .thread-item__open {
+  padding-right: 32px;
+}
+
+.thread-item--running:hover .thread-item__open,
+.thread-item--running:focus-within .thread-item__open {
+  padding-right: 120px;
+}
+
+.thread-item--running .thread-item__actions {
+  right: 30px;
+}
+
+.thread-item__danger {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--danger);
+  color: var(--text-on-strong);
+}
+
+.thread-item__danger-text {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+/*
+ * 行内重命名输入框：替换整行点击区，风格与行一致。
+ * 左内边距 32px = 图标槽 15px + 列间距 9px + 行内边距 8px，
+ * 让输入的文字与标题起始位置重合；字号同样取 12px 与标题一致，
+ * 进入重命名时文字既不会横向跳、也不会突然变大。
+ */
+.thread-item__rename {
+  width: 100%;
+  padding: 6px 8px 6px 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.thread-item__rename:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/*
+ * 任务 / 会话标题（开发者 Jan）
+ *
+ * 项目名 14px（--fs-base），任务标题取 12px（--fs-xs）：子项字号比父项小两档，
+ * 层级靠「字号差 + 更小的图标 + 缩进与连线」共同表达，不再只靠缩进。
+ * 时间 meta 同为 12px，靠更浅的 --text-3 与无字重区分，不与标题抢视觉。
+ */
+.thread-item__title {
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--fs-xs);
+}
+
+.thread-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.sidebar__footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--border);
+  padding: 8px;
+}
+
+/* 新建会话独占顶部一行 */
+.sidebar__top-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.sidebar__new-chat {
+  flex: 0 0 auto;
+  width: auto;
+  gap: 6px;
+  padding-inline: 8px;
+  color: var(--text-2);
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gradient-avatar);
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-on-strong);
+  flex: 0 0 auto;
+}
+
+/* ============================ 中间区 ============================ */
+
+.shell__main {
+  container: main / inline-size;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-0);
+}
+
+.main-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.main-head__identity {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.main-head__workspace {
+  min-width: 0;
+  max-width: min(100%, 320px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.main-head__error {
+  flex-basis: 100%;
+  min-width: 0;
+  order: 3;
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+.main-head__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.main-head__path {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.main-head__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+}
+
+.main-head__usage {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* 会话工作目录菜单：把 Worktree 操作收进一个低频入口，避免和终端、右栏并列抢占主操作区。 */
+.workspace-menu {
+  position: relative;
+}
+
+.workspace-menu__panel {
+  bottom: calc(100% + 8px);
+  width: min(320px, calc(100vw - 24px));
+  min-width: 280px;
+}
+
+.main-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 消息区单独占满剩余空间，底部的“回到最新”因此始终落在输入框正上方。 */
+.conversation-stream {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-latest-bar {
+  position: absolute;
+  right: 0;
+  bottom: 10px;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.chat-latest-bar .btn {
+  pointer-events: auto;
+  /* 小浮层阴影：--shadow-sm 从未定义过，原先这条声明整体失效，悬浮按钮贴在消息流上没有分离度 */
+  box-shadow: var(--shadow-toast);
+}
+
+/* ---- 消息流 ---- */
+
+.chat-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* WKWebView 的 scroll anchoring 会在消息块重渲染时补偿 scrollTop，
+     把贴底的视图拽到中间（浏览器不复现、桌面端必现）。
+     贴底跟随已由 useAutoScroll（follow effect + ResizeObserver）显式负责，
+     这里关闭浏览器自身的锚定补偿。 */
+  overflow-anchor: none;
+  padding: 22px 0 8px;
+}
+
+.chat-inner {
+  width: min(100%, var(--composer-max-width));
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fade-in var(--dur-base) var(--ease);
+}
+
+.msg--user {
+  align-items: flex-end;
+}
+
+.bubble {
+  font-weight: 450;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 9px 14px;
+  max-width: 78%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 用户消息里的附件：图片给缩略图，文本文件给文件名条 */
+.bubble__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.bubble__attachments + div {
+  margin-top: 6px;
+}
+
+.bubble__thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.bubble__file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-3);
+  font-size: var(--fs-xs);
+  max-width: 100%;
+}
+
+.bubble__file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bubble__file > .muted {
+  flex-shrink: 0;
+}
+
+.assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assistant__row {
+  display: flex;
+  gap: 10px;
+}
+
+.assistant__gutter {
+  flex: 0 0 auto;
+  width: 22px;
+  display: flex;
+  justify-content: center;
+  padding-top: 1px;
+}
+
+.assistant__content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.assistant__title {
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+/* ---- 消息操作栏（复制 / 分享 / 追问 / 重新生成） ---- */
+
+/* 常驻显示：不做悬停显隐，保证任何时候都能一眼看到这排动作 */
+.msg__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 助手消息的操作栏要对齐正文：让开左侧头像列的 22px 与行内间距 10px，合计 32px */
+.msg__actions--assistant {
+  padding-left: 32px;
+}
+
+.msg__action {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  transition: background var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+.msg__action:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* 运行中整排动作都不可用：避免与正在推进的那一轮打架 */
+.msg__action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- 折叠的思考块 ---- */
+
+.reasoning {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 10px;
+  color: var(--text-2);
+}
+
+.reasoning__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.reasoning__toggle:hover {
+  color: var(--text-1);
+}
+
+.reasoning__body {
+  margin-top: 6px;
+  font-size: var(--fs-base);
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+
+/* ---- 工具调用卡片 ---- */
+
+.tool-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.tool-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+}
+
+.tool-card__icon {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  display: flex;
+}
+
+.tool-card__title {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tool-card__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+
+.tool-card__cmd {
+  margin: 0;
+  padding: 0 12px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tool-card__output {
+  border-top: 1px solid var(--border);
+  background: var(--bg-sunken);
+  padding: 10px 12px;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: pre;
+  margin: 0;
+}
+
+.tool-card__output--error {
+  color: var(--diff-del-text);
+}
+
+/* ---- 命令审批与修改检查点 ---- */
+
+.approval-card,
+.checkpoint-card {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.approval-card__head,
+.checkpoint-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approval-card__icon,
+.checkpoint-card__icon {
+  color: var(--text-2);
+  display: flex;
+}
+
+.approval-card__title,
+.checkpoint-card__title {
+  color: var(--text-1);
+  font-size: var(--fs-base);
+  font-weight: 600;
+}
+
+.approval-card__meta,
+.checkpoint-card__meta,
+.approval-card__reason,
+.checkpoint-card__detail {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.approval-card__command {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.approval-card__actions,
+.checkpoint-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- 系统提示 ---- */
+
+/*
+ * 提示条：用于「运行被上限截停」这类需要用户看到、但不属于模型回答的说明。
+ * 压成单行、字号取常规一档，避免在对话流里比正文还抢眼。
+ */
+.notice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.notice-card--warn {
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+.notice-card__icon {
+  display: flex;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.notice-card__text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.6;
+  /* 提示文案里常带回显的模型 / 服务端报错，含 URL 一类无空格长串，需允许折行 */
+  overflow-wrap: anywhere;
+}
+
+/* ---- 用量卡片 ---- */
+
+/*
+ * 压成单行：用量是运行结束后的补充信息，正文只留数字，多轮说明走悬停提示。
+ * 字号统一到最小一档（--fs-xs），否则这一行在对话流里会比正文还抢眼、还占版面。
+ */
+.usage-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  /* 窄窗口放不下时整项换行，不做横向滚动 */
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.usage-card__icon {
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+}
+
+.usage-card__title {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+/* 每档数字都是「标签 + 值」，档与档之间用间隔点分隔，省掉原来的多行网格 */
+.usage-card__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.usage-card__item + .usage-card__item::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--text-3);
+}
+
+.usage-card__label {
+  color: var(--text-3);
+}
+
+.usage-card__value {
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-card__meta {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+
+/* ---- 需求确认卡片 ---- */
+
+.question-card {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.question-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.question-card__icon {
+  flex: 0 0 auto;
+  color: var(--text-2);
+  display: flex;
+}
+
+.question-card__title {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+}
+
+.question-card__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+
+.question-card__text {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+  white-space: pre-wrap;
+}
+
+.question-card__questions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.question-card__question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.question-card__question + .question-card__question {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.question-card__question-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.question-card__index {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.question-card__header {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.question-card__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.question-option {
+  text-align: left;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.question-option:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-3);
+}
+
+.question-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.question-option--picked {
+  border-color: var(--accent);
+  background: var(--bg-3);
+  opacity: 1;
+}
+
+.question-option__label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.question-option__description {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+.question-card__custom {
+  width: 100%;
+}
+
+.question-card__answer {
+  border-left: 2px solid var(--accent);
+  padding: 5px 9px;
+  color: var(--text-2);
+  background: var(--bg-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-wrap;
+}
+
+.question-card__foot {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+/* ---- diff 卡片 ---- */
+
+.diff-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-1);
+}

@@ -1,0 +1,8 @@
+/* 全局样式按职责分片，保持加载顺序（开发者 Jan）。 */
+@import "./global.part-01.css";
+@import "./global.part-02.css";
+@import "./global.part-03.css";
+@import "./global.part-04.css";
+@import "./global.part-05.css";
+@import "./global.part-06.css";
+@import "./global.part-07.css";

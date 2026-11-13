@@ -1,0 +1,7 @@
+# postinstall 白名单：tsx 的 esbuild 需要安装校验；protobufjs 与 tesseract.js 无需构建脚本。
+allowBuilds:
+  esbuild: true
+  protobufjs: false
+  tesseract.js: false
+# hoisted 布局兼容不支持符号链接的文件系统（如 exFAT）
+nodeLinker: hoisted

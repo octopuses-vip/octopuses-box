@@ -1,0 +1,805 @@
+
+.terminal__xterm {
+  width: 100%;
+  height: 100%;
+}
+
+.terminal__xterm .xterm {
+  height: 100%;
+  padding: 0;
+}
+
+.terminal__status {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.terminal__status--connected {
+  color: var(--success);
+}
+
+.terminal__status--connecting {
+  color: var(--text-2);
+}
+
+.terminal__status--exited,
+.terminal__status--unavailable,
+.terminal__notice {
+  color: var(--diff-del-text);
+}
+
+.terminal__screen {
+  margin: 0;
+  min-height: 100%;
+  color: var(--text-2);
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal__line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal__line--cmd {
+  color: var(--text-1);
+}
+.terminal__line--out {
+  color: var(--text-2);
+}
+.terminal__line--err {
+  color: var(--diff-del-text);
+}
+
+.terminal__form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.terminal__prompt {
+  color: var(--success);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+.terminal__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+.terminal__input::placeholder {
+  color: var(--text-3);
+}
+
+.terminal__input:disabled {
+  color: var(--text-3);
+}
+
+/* ============================ 登录页与通用面板 ============================ */
+
+.login {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--bg-0);
+}
+
+.login__card {
+  width: min(100%, 560px);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 30px 32px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 16px 56px color-mix(in srgb, var(--text-1) 6%, transparent);
+}
+
+.login__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.login__logo-mark {
+  display: block;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.login__title {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.login__sub {
+  color: var(--text-2);
+  margin: 0;
+}
+
+.login__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/*
+ * 登录页底部的本地模式出口（开发者 Jan）
+ *
+ * 一条分隔线把「登录」与「不登录的另一种走法」分开：两者是互斥的路线，不是同一层级的
+ * 两个按钮。右侧用的是 `btn--ghost btn--sm`，低强调但仍是可见的按钮——纯文字链在一张
+ * 深色卡片上对比度不足，容易被当成说明文字跳过，而这里恰恰是走投无路的用户在找的东西。
+ */
+.login__alt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+
+/*
+ * 首次启动的「模型来源」选项卡（开发者 Jan）
+ *
+ * 整张卡片可点，而不是「选中 + 再点确认」——两个选项只有两个取值，
+ * 多一步确认只是多一次点击。说明文字直接写在选项里，用户点之前就知道
+ * 这条路上要不要登录、要不要填管理端地址。
+ */
+.source-choice-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.source-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-0);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+
+.source-choice:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-2);
+}
+
+.source-choice__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  color: var(--accent);
+}
+
+.source-choice__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* 弹性子项默认 min-width: auto 会拒绝收缩到内容以下，长说明会把卡片撑宽 */
+  min-width: 0;
+}
+
+.source-choice__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.source-choice__badge {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.source-choice__desc {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.path-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-0);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ============================ 按钮 ============================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-base);
+  font-weight: 550;
+  border: 1px solid var(--border-strong);
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--bg-hover);
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-strong);
+  font-weight: 600;
+}
+
+.btn--primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn--primary:disabled,
+.btn--ghost:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn--ghost {
+  border-color: transparent;
+  color: var(--text-2);
+}
+
+.btn--ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+/* 危险操作（删除等）的确认按钮：与 .btn--primary 一致，悬停时提亮一档 */
+.btn--danger {
+  background: var(--danger-strong);
+  border-color: var(--danger-strong);
+  color: var(--text-on-strong);
+  font-weight: 600;
+}
+
+.btn--danger:hover {
+  background: var(--danger);
+}
+
+.btn--sm {
+  height: auto;
+  min-height: 30px;
+  max-width: 100%;
+  padding: 4px 12px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  flex: 0 0 auto;
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.icon-btn--active {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* 列表行里的导出按钮：行高只有 32px，用小一号的方块才不挤压文字 */
+.icon-btn--sm {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+}
+
+/* ============================ 命令面板 ============================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  z-index: 100;
+}
+
+.palette {
+  width: min(100%, 560px);
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+
+.palette__input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  outline: none;
+  padding: 14px 16px;
+  font-size: var(--fs-md);
+}
+
+.palette__list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.palette__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--text-2);
+}
+
+.palette__item:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.palette__hint {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* ============================ 通用居中弹窗（更新提示等） ============================ */
+
+/* `overlay` 默认顶部对齐（命令面板贴着上方），弹窗需要垂直居中 */
+.overlay--center {
+  align-items: center;
+  padding-top: 0;
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(100%, 460px);
+  padding: 18px 20px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-1);
+}
+
+.modal__title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.modal__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.modal__body {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+
+.modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* 确认弹窗正文只有一两句话，不需要 .modal__body 那层凹陷内容框 */
+.modal__body--plain {
+  max-height: none;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+/* 确认弹窗比更新说明弹窗窄一档，更接近系统确认框的观感 */
+.modal--confirm {
+  width: min(100%, 400px);
+}
+
+.modal__hint {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.modal__error {
+  font-size: var(--fs-sm);
+  color: var(--danger);
+}
+
+/* 项目弹窗比默认弹窗宽一档：要同时容纳目录、MCP / 技能勾选列表与提示词 */
+.modal--wide {
+  width: min(100%, 560px);
+}
+
+/* 项目弹窗正文是表单，去掉 .modal__body 的 pre-wrap 与窄高度，改用分组纵向排布 */
+.project-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 62vh;
+  white-space: normal;
+}
+
+.project-dialog__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-dialog__label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.project-dialog__path {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.project-dialog__path .form__input {
+  flex: 1;
+}
+
+/* MCP / 技能勾选列表：项多时内部滚动，不撑破弹窗 */
+.project-dialog__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.project-dialog__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 2px;
+  font-size: var(--fs-base);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.project-dialog__check input {
+  flex: none;
+}
+
+.project-dialog__check-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 远程主机行在名称后附 `user@host:port`：等宽、弱化，避免与名称抢视觉重心 */
+.project-dialog__check-sub {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+.project-dialog__hint {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.project-dialog__prompt {
+  min-height: 84px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* 下载进度条：宽度由内联 style 按百分比驱动 */
+.progress {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-3);
+  overflow: hidden;
+}
+
+.progress__bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.knowledge-download {
+  margin-top: 8px;
+}
+
+.knowledge-download__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.knowledge-download__status .btn {
+  flex-shrink: 0;
+}
+
+.knowledge-library { margin: 20px 0; }
+.knowledge-page__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.knowledge-page__header > .btn { flex-shrink: 0; }
+.knowledge-summary { display: flex; flex-wrap: wrap; gap: 12px 24px; color: var(--text-2); font-size: var(--fs-sm); margin-bottom: 14px; }
+.knowledge-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.knowledge-hint { font-size: var(--fs-sm); margin-bottom: 12px; }
+.knowledge-error { color: var(--danger, var(--text-1)); overflow-wrap: anywhere; line-height: 1.6; }
+.knowledge-search-controls { display: flex; align-items: stretch; gap: 12px; margin-top: 24px; }
+.knowledge-search-controls .search-input { flex: 1; margin: 0; min-width: 0; }
+.knowledge-search-controls .form__select { color: var(--text-1); }
+.knowledge-source-name { flex: 1; min-width: 0; border: 0; background: none; color: var(--text-1); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+/* 弹窗用 flex 纵向布局：h2 是固定头部，内容放 .knowledge-dialog__body 内部滚动，标题天然不随内容滚走 */
+.knowledge-dialog { width: min(880px, calc(100vw - 48px)); max-height: calc(100vh - 64px); margin: auto; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-0); color: var(--text-1); overflow: hidden; box-shadow: var(--shadow-modal); }
+.knowledge-dialog[open] { display: flex; flex-direction: column; }
+.knowledge-dialog h2 { flex: none; font-size: var(--fs-lg); margin: 0; padding: 22px 28px 16px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.knowledge-dialog__body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 28px 28px; }
+.knowledge-dialog--notice { width: min(440px, calc(100vw - 48px)); }
+.knowledge-dialog--notice p { margin: 0 0 20px; overflow-wrap: anywhere; line-height: 1.7; }
+.knowledge-dialog::backdrop { background: var(--overlay); }
+.session-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 5px 18px; flex-shrink: 0; color: var(--text-3); font-size: var(--fs-sm); border-bottom: 1px solid var(--border); }
+.session-status--error { color: var(--text-1); background: var(--bg-1); padding-block: 12px; }
+.answer-versions { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: var(--fs-sm); margin-top: 6px; }
+.answer-versions select { width: auto; padding-block: 3px; }
+.history-load-more { display: block; margin: 12px auto 24px; }
+.knowledge-export-selection { margin: 20px 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; }
+.knowledge-export-selection label, .knowledge-review-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.knowledge-export-selection input, .knowledge-review-toggle input { flex-shrink: 0; accent-color: var(--text-1); }
+.knowledge-export-groups { max-height: 250px; overflow: auto; margin-top: 12px; }
+.knowledge-export-groups details { padding: 8px 0; }
+.knowledge-export-groups summary { cursor: pointer; }
+.knowledge-export-groups summary label { display: inline-flex; }
+.knowledge-export-item { padding: 7px 0 7px 24px; }
+.knowledge-export-item span { overflow-wrap: anywhere; min-width: 0; }
+.knowledge-review-toggle { margin: 20px 0 12px; }
+.knowledge-export-review { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.knowledge-field { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.knowledge-field .form__select { color: var(--text-1); }
+.knowledge-preview { white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); padding: 16px; font-size: var(--fs-sm); line-height: 1.7; max-height: 280px; overflow: auto; margin: 12px 0 20px; }
+.knowledge-preview--document { max-height: 60vh; font-family: inherit; }
+
+/* ============================ Tooltip ============================ */
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip-anchor::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-3);
+  color: var(--text-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 3px 7px;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease);
+  z-index: 60;
+}
+
+.tooltip-anchor[data-tooltip-side="top"]::after {
+  bottom: calc(100% + 7px);
+}
+
+.tooltip-anchor[data-tooltip-side="bottom"]::after {
+  top: calc(100% + 7px);
+}
+
+.tooltip-anchor:hover::after,
+.tooltip-anchor:focus-within::after {
+  opacity: 1;
+  transition-delay: 260ms;
+}
+
+/* ============================ 动画 ============================ */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.pulse {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* 底部轻量提示条：承载「已是最新版本」这类一次性结果，几秒后自动消失 */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(90vw, 480px);
+  padding: 9px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  box-shadow: var(--shadow-toast);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  z-index: 120;
+  animation: toast-in var(--dur-base) var(--ease);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* 文本输入保留现有 focus 边框，其他键盘交互统一显示焦点轮廓。 */
+:where(
+  button,
+  a[href],
+  summary,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"]):not(input):not(textarea):not(select),
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"]
+):focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

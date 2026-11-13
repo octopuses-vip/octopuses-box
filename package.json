@@ -1,0 +1,68 @@
+{
+  "name": "octopuses",
+  "private": true,
+  "description": "Cross-platform AI workspace for conversations, knowledge and engineering tools",
+  "keywords": [
+    "tauri",
+    "react",
+    "rust",
+    "ai-agent",
+    "knowledge-base",
+    "desktop"
+  ],
+  "license": "MIT",
+  "author": "octopuses-vip",
+  "repository": "https://github.com/octopuses-vip/octopuses-box",
+  "homepage": "https://octopuses.vip",
+  "bugs": {
+    "url": "https://github.com/octopuses-vip/octopuses-box/issues"
+  },
+  "version": "0.47.81",
+  "type": "module",
+  "scripts": {
+    "test": "tsx --tsconfig tsconfig.json --test tests/*.test.tsx",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check:file-size": "node scripts/check-file-size.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check:docs": "python3 scripts/audit_doc_coverage.py",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "preview": "vite preview",
+    "cv:assets": "node scripts/sync-cv-assets.mjs",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@huggingface/tokenizers": "0.2.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.8.0",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-os": "^2",
+    "@tesseract.js-data/chi_sim": "1.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "fflate": "^0.8.3",
+    "occt-import-js": "^0.0.23",
+    "onnxruntime-web": "1.30.0",
+    "pdfjs-dist": "^6.4.299",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tesseract.js": "7.0.0",
+    "tesseract.js-core": "6.1.2",
+    "three": "^0.186.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@xmldom/xmldom": "^0.9.12",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}

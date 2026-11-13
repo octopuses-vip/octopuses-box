@@ -1,0 +1,19 @@
+[package]
+name = "ots-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "ots-cli 分层配置：默认 → 用户级 → 项目级 → 环境变量 → CLI 参数"
+
+[dependencies]
+dirs = "6.0.0"
+globset = "0.4.20"
+ots-core.workspace = true
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.21"
+toml = "1.1.6"
+
+[dev-dependencies]
+tempfile = "3.27.0"

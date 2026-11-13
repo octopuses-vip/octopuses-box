@@ -1,0 +1,480 @@
+/*
+ * 主题色板（开发者 Jan）
+ *
+ * 这里是全局**唯一的颜色来源**：TypeScript 侧不出现任何十六进制色值，
+ * 组件样式一律通过 var(--xxx) 取色，切换主题在样式侧只是一次属性变更。
+ *
+ * 属性约定（由 src/app/theme.ts 的 applyTheme 写入 <html>）：
+ *   data-theme  = graphite | ocean | forest | sunset
+ *   data-scheme = light | dark
+ *
+ * 选择器刻意**不带 :root 前缀**：设置页的主题卡片只要自带这两个属性，
+ * 卡片内部的 var(--bg-0) / var(--accent) 就会解析成该主题的真实颜色，
+ * 于是「色卡预览」不用在 TS 里抄任何色值。
+ *
+ * 优先级：主题块 (0,2,0) 高于下面 :root 兜底块 (0,1,0)，
+ * 因此脚本未执行（没有任何属性）时用极简灰-深色兜底，与旧版本观感一致。
+ */
+
+/* ==================== 极简灰 · 深色（同时作为兜底） ==================== */
+:root {
+  --terminal-border: #3b4352;
+  --terminal-text: #d8d8d8;
+  --terminal-success: #8bd49c;
+  --terminal-danger: #f5a3a3;
+  --terminal-text-strong: #ffffff;
+}
+
+:root,
+[data-theme="graphite"][data-scheme="dark"] {
+  /* 背景层级：数字越大越靠前（越贴近用户） */
+  --bg-0: #10151e;
+  --bg-1: #151d29;
+  --bg-2: #1c2635;
+  --bg-3: #253247;
+  --bg-hover: #202e40;
+  --bg-active: #233b50;
+  --bg-input: #182231;
+  /* 比 bg-0 更深的凹陷面：代码块、工具输出、审批命令区 */
+  --bg-sunken: #0c111a;
+  /* 网页预览的 iframe 画布：两套模式都接近白，与主题无关 */
+  --bg-preview: #ffffff;
+  /* 终端：刻意不跟随主题，浅色主题下也保持深色终端 */
+  --terminal-bg: #0a0a0a;
+
+  --border: #293648;
+  --border-strong: #40536b;
+  --border-focus: #63d1e6;
+
+  --text-1: #eaf1fa;
+  --text-2: #b0bfd1;
+  --text-3: #8c9db4;
+  /* 冰青按钮使用深色文字，确保对比度。 */
+  --text-on-strong: #082b36;
+
+  --accent: #76d7e8;
+  --accent-hover: #9ce7f2;
+  --info: #8dbbfa;
+  --success: #9abca4;
+  --danger: #df9b96;
+  /* 比 danger 更深、可承白字的一档：窗口关闭按钮 hover */
+  --danger-strong: #c8342f;
+  --warning: #e3b341;
+  --info-border: #26374f;
+  --success-border: #2a4a32;
+  --warning-border: #4a3f20;
+
+  --diff-add-bg: #10281a;
+  --diff-add-gutter: #16341f;
+  --diff-add-text: #7ee787;
+  --diff-del-bg: #33161a;
+  --diff-del-gutter: #3d1c21;
+  --diff-del-text: #ff7b72;
+
+  --gradient-avatar: var(--accent);
+  --gradient-hero: var(--bg-2);
+  --glow-accent: none;
+  --scrollbar-thumb: #333333;
+  --scrollbar-thumb-hover: #4a4a4a;
+  --checker-a: #141414;
+  --checker-b: #0f0f0f;
+  --overlay: rgba(0, 0, 0, 0.5);
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.22);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.28);
+  --shadow-toast: 0 6px 18px rgba(0, 0, 0, 0.2);
+  /* 开关需要一对独立变量：浅色模式下白滑块落在浅灰轨道上会看不见（见文件末尾） */
+  --switch-track: var(--bg-3);
+  --switch-knob: #ffffff;
+}
+
+/* ==================== 极简灰 · 浅色 ==================== */
+[data-theme="graphite"][data-scheme="light"] {
+  --bg-0: #f5f8fc;
+  --bg-1: #ffffff;
+  --bg-2: #edf2f8;
+  --bg-3: #e0e8f2;
+  --bg-hover: #eaf0f8;
+  --bg-active: #deedf5;
+  --bg-input: #ffffff;
+  --bg-sunken: #eaf0f7;
+  --bg-preview: #ffffff;
+  --terminal-bg: #0a0a0a;
+
+  --border: #d8e2ed;
+  --border-strong: #bccbdc;
+  --border-focus: #087d98;
+
+  --text-1: #17283e;
+  --text-2: #4e6077;
+  --text-3: #61738a;
+  --text-on-strong: #ffffff;
+
+  --accent: #08758c;
+  --accent-hover: #065c70;
+  --info: #356ba8;
+  --success: #557b60;
+  --danger: #b55750;
+  --danger-strong: #c8342f;
+  --warning: #b45309;
+  --info-border: #bfdbfe;
+  --success-border: #bbf7d0;
+  --warning-border: #fde68a;
+
+  --diff-add-bg: #e6ffec;
+  --diff-add-gutter: #ccffd8;
+  --diff-add-text: #1a7f37;
+  --diff-del-bg: #ffebe9;
+  --diff-del-gutter: #ffd7d5;
+  --diff-del-text: #cf222e;
+
+  --gradient-avatar: var(--accent);
+  --gradient-hero: var(--bg-2);
+  --glow-accent: none;
+  --scrollbar-thumb: #c4c4c8;
+  --scrollbar-thumb-hover: #a8a8ae;
+  --checker-a: #f0f0f0;
+  --checker-b: #ffffff;
+  --overlay: rgba(15, 15, 20, 0.28);
+  --shadow-menu: 0 8px 24px rgba(28, 40, 32, 0.09);
+  --shadow-modal: 0 16px 40px rgba(28, 40, 32, 0.12);
+  --shadow-toast: 0 6px 18px rgba(28, 40, 32, 0.08);
+}
+
+/* ==================== 海洋蓝 · 深色 ==================== */
+[data-theme="ocean"][data-scheme="dark"] {
+  --bg-0: #0b1220;
+  --bg-1: #111a2b;
+  --bg-2: #16223a;
+  --bg-3: #1c2a45;
+  --bg-hover: #17263d;
+  --bg-active: #1f3054;
+  --bg-input: #142035;
+  --bg-sunken: #080e1a;
+  --bg-preview: #ffffff;
+  --terminal-bg: #070c16;
+
+  --border: #22314d;
+  --border-strong: #2f4160;
+  --border-focus: #3b82f6;
+
+  --text-1: #e6edf7;
+  --text-2: #9fb0c9;
+  --text-3: #6b7d96;
+  --text-on-strong: #ffffff;
+
+  --accent: #3b82f6;
+  --accent-hover: #2f6fd8;
+  --info: #60a5fa;
+  --success: #4ade80;
+  --danger: #f87171;
+  --danger-strong: #c8342f;
+  --warning: #fbbf24;
+  --info-border: #1e3a5f;
+  --success-border: #1f4a33;
+  --warning-border: #4a3c1f;
+
+  --diff-add-bg: #0d2a1c;
+  --diff-add-gutter: #123625;
+  --diff-add-text: #6ee7a0;
+  --diff-del-bg: #2e1418;
+  --diff-del-gutter: #3a1a1f;
+  --diff-del-text: #fca5a5;
+
+  --gradient-avatar: linear-gradient(140deg, #3b82f6, #6366f1);
+  --gradient-hero: linear-gradient(135deg, #0f1c33, #131a2e);
+  --glow-accent: radial-gradient(900px 420px at 50% -10%, rgba(59, 130, 246, 0.2), transparent 70%);
+  --scrollbar-thumb: #2a3a55;
+  --scrollbar-thumb-hover: #3a4d6d;
+  --checker-a: #10192b;
+  --checker-b: #0b1220;
+  --overlay: rgba(4, 8, 16, 0.55);
+  --shadow-menu: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 30px 70px rgba(0, 0, 0, 0.65);
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== 海洋蓝 · 浅色 ==================== */
+[data-theme="ocean"][data-scheme="light"] {
+  --bg-0: #ffffff;
+  --bg-1: #f5f8fd;
+  --bg-2: #eaf1fb;
+  --bg-3: #dfe9f7;
+  --bg-hover: #eef4fc;
+  --bg-active: #dde8f8;
+  --bg-input: #ffffff;
+  --bg-sunken: #f2f6fc;
+  --bg-preview: #ffffff;
+  --terminal-bg: #0b1220;
+
+  --border: #d7e3f4;
+  --border-strong: #c2d3ec;
+  --border-focus: #3b82f6;
+
+  --text-1: #0c1726;
+  --text-2: #3e4f67;
+  --text-3: #63758e;
+  --text-on-strong: #ffffff;
+
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --info: #1d4ed8;
+  --success: #15803d;
+  --danger: #dc2626;
+  --danger-strong: #c8342f;
+  --warning: #b45309;
+  --info-border: #bfdbfe;
+  --success-border: #bbf7d0;
+  --warning-border: #fde68a;
+
+  --diff-add-bg: #e7f8ef;
+  --diff-add-gutter: #cdf0dd;
+  --diff-add-text: #15803d;
+  --diff-del-bg: #fdeceb;
+  --diff-del-gutter: #fad9d6;
+  --diff-del-text: #c2410c;
+
+  --gradient-avatar: linear-gradient(140deg, #3b82f6, #6366f1);
+  --gradient-hero: linear-gradient(135deg, #e8f1ff, #eef2ff);
+  --glow-accent: radial-gradient(900px 420px at 50% -10%, rgba(59, 130, 246, 0.12), transparent 70%);
+  --scrollbar-thumb: #c3d2e8;
+  --scrollbar-thumb-hover: #a8bcd8;
+  --checker-a: #eef3fb;
+  --checker-b: #ffffff;
+  --overlay: rgba(10, 20, 40, 0.26);
+  --shadow-menu: 0 18px 40px rgba(23, 45, 80, 0.14);
+  --shadow-modal: 0 30px 70px rgba(23, 45, 80, 0.18);
+  --shadow-toast: 0 12px 30px rgba(23, 45, 80, 0.12);
+}
+
+/* ==================== 森林绿 · 深色 ==================== */
+[data-theme="forest"][data-scheme="dark"] {
+  --bg-0: #0a1210;
+  --bg-1: #111c19;
+  --bg-2: #16241f;
+  --bg-3: #1c2d27;
+  --bg-hover: #16251f;
+  --bg-active: #1e322a;
+  --bg-input: #13211c;
+  --bg-sunken: #07100d;
+  --bg-preview: #ffffff;
+  --terminal-bg: #06100c;
+
+  --border: #21352d;
+  --border-strong: #2e463c;
+  --border-focus: #10b981;
+
+  --text-1: #e3f0ea;
+  --text-2: #9ab3a8;
+  --text-3: #6a857a;
+  --text-on-strong: #ffffff;
+
+  --accent: #10b981;
+  --accent-hover: #0d9c6d;
+  --info: #38bdf8;
+  --success: #34d399;
+  --danger: #f87171;
+  --danger-strong: #c8342f;
+  --warning: #fbbf24;
+  --info-border: #1c3b4a;
+  --success-border: #1f4a3a;
+  --warning-border: #4a3f1f;
+
+  --diff-add-bg: #0d2a1f;
+  --diff-add-gutter: #123629;
+  --diff-add-text: #6ee7b7;
+  --diff-del-bg: #2e1418;
+  --diff-del-gutter: #3a1a1f;
+  --diff-del-text: #fca5a5;
+
+  --gradient-avatar: linear-gradient(140deg, #10b981, #059669);
+  --gradient-hero: linear-gradient(135deg, #0e1e19, #12211c);
+  --glow-accent: radial-gradient(900px 420px at 50% -10%, rgba(16, 185, 129, 0.18), transparent 70%);
+  --scrollbar-thumb: #2a3f37;
+  --scrollbar-thumb-hover: #3a554a;
+  --checker-a: #101a17;
+  --checker-b: #0a1210;
+  --overlay: rgba(5, 12, 9, 0.55);
+  --shadow-menu: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 30px 70px rgba(0, 0, 0, 0.65);
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== 森林绿 · 浅色 ==================== */
+[data-theme="forest"][data-scheme="light"] {
+  --bg-0: #ffffff;
+  --bg-1: #f4faf7;
+  --bg-2: #e9f5ef;
+  --bg-3: #ddeee5;
+  --bg-hover: #edf7f1;
+  --bg-active: #dbeee4;
+  --bg-input: #ffffff;
+  --bg-sunken: #f0f8f4;
+  --bg-preview: #ffffff;
+  --terminal-bg: #0a1210;
+
+  --border: #d5e9de;
+  --border-strong: #bfdccd;
+  --border-focus: #10b981;
+
+  --text-1: #0c1914;
+  --text-2: #3d5348;
+  --text-3: #60786e;
+  --text-on-strong: #ffffff;
+
+  --accent: #059669;
+  --accent-hover: #047857;
+  --info: #0369a1;
+  --success: #15803d;
+  --danger: #dc2626;
+  --danger-strong: #c8342f;
+  --warning: #b45309;
+  --info-border: #bae6fd;
+  --success-border: #bbf7d0;
+  --warning-border: #fde68a;
+
+  --diff-add-bg: #e7f8ef;
+  --diff-add-gutter: #cdf0dd;
+  --diff-add-text: #15803d;
+  --diff-del-bg: #fdeceb;
+  --diff-del-gutter: #fad9d6;
+  --diff-del-text: #c2410c;
+
+  --gradient-avatar: linear-gradient(140deg, #10b981, #059669);
+  --gradient-hero: linear-gradient(135deg, #e6f7ef, #eefaf4);
+  --glow-accent: radial-gradient(900px 420px at 50% -10%, rgba(16, 185, 129, 0.12), transparent 70%);
+  --scrollbar-thumb: #c2dbd0;
+  --scrollbar-thumb-hover: #a6c7b8;
+  --checker-a: #edf6f1;
+  --checker-b: #ffffff;
+  --overlay: rgba(8, 25, 18, 0.26);
+  --shadow-menu: 0 18px 40px rgba(12, 40, 28, 0.14);
+  --shadow-modal: 0 30px 70px rgba(12, 40, 28, 0.18);
+  --shadow-toast: 0 12px 30px rgba(12, 40, 28, 0.12);
+}
+
+/* ==================== 暖阳橙 · 深色 ==================== */
+[data-theme="sunset"][data-scheme="dark"] {
+  --bg-0: #140f0a;
+  --bg-1: #1e1710;
+  --bg-2: #271e14;
+  --bg-3: #31261a;
+  --bg-hover: #291f15;
+  --bg-active: #382a1c;
+  --bg-input: #241b12;
+  --bg-sunken: #100b07;
+  --bg-preview: #ffffff;
+  --terminal-bg: #0f0a06;
+
+  --border: #33261a;
+  --border-strong: #453324;
+  --border-focus: #f97316;
+
+  --text-1: #f5ece2;
+  --text-2: #c0ab97;
+  --text-3: #8d7a68;
+  /* 亮橙底上用深字：白字对比度不足 */
+  --text-on-strong: #1c1207;
+
+  --accent: #f97316;
+  --accent-hover: #ea580c;
+  --info: #60a5fa;
+  --success: #4ade80;
+  --danger: #f87171;
+  --danger-strong: #c8342f;
+  --warning: #fbbf24;
+  --info-border: #1e3a5f;
+  --success-border: #1f4a33;
+  --warning-border: #4a3c1f;
+
+  --diff-add-bg: #182a1c;
+  --diff-add-gutter: #1f3624;
+  --diff-add-text: #86efac;
+  --diff-del-bg: #2e1418;
+  --diff-del-gutter: #3a1a1f;
+  --diff-del-text: #fca5a5;
+
+  --gradient-avatar: linear-gradient(140deg, #fb923c, #f43f5e);
+  --gradient-hero: linear-gradient(135deg, #241a12, #2a1a1a);
+  --glow-accent: radial-gradient(900px 420px at 50% -10%, rgba(249, 115, 22, 0.18), transparent 70%);
+  --scrollbar-thumb: #42321f;
+  --scrollbar-thumb-hover: #57432c;
+  --checker-a: #1a130c;
+  --checker-b: #140f0a;
+  --overlay: rgba(20, 10, 4, 0.55);
+  --shadow-menu: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 30px 70px rgba(0, 0, 0, 0.65);
+  --shadow-toast: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== 暖阳橙 · 浅色 ==================== */
+[data-theme="sunset"][data-scheme="light"] {
+  --bg-0: #ffffff;
+  --bg-1: #fdf7f1;
+  --bg-2: #faeede;
+  --bg-3: #f5e4cf;
+  --bg-hover: #fcf4ea;
+  --bg-active: #f6e6d3;
+  --bg-input: #ffffff;
+  --bg-sunken: #fbf3ea;
+  --bg-preview: #ffffff;
+  --terminal-bg: #140f0a;
+
+  --border: #f0e0cd;
+  --border-strong: #e3ceb4;
+  --border-focus: #f97316;
+
+  --text-1: #1c1106;
+  --text-2: #5c4635;
+  --text-3: #806b56;
+  --text-on-strong: #ffffff;
+
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --info: #0369a1;
+  --success: #15803d;
+  --danger: #dc2626;
+  --danger-strong: #c8342f;
+  --warning: #b45309;
+  --info-border: #bae6fd;
+  --success-border: #bbf7d0;
+  --warning-border: #fde68a;
+
+  --diff-add-bg: #e7f8ef;
+  --diff-add-gutter: #cdf0dd;
+  --diff-add-text: #15803d;
+  --diff-del-bg: #fdeceb;
+  --diff-del-gutter: #fad9d6;
+  --diff-del-text: #c2410c;
+
+  --gradient-avatar: linear-gradient(140deg, #fb923c, #f43f5e);
+  --gradient-hero: linear-gradient(135deg, #fff0e0, #ffe9e4);
+  --glow-accent: radial-gradient(900px 420px at 50% -10%, rgba(249, 115, 22, 0.12), transparent 70%);
+  --scrollbar-thumb: #e0cbb2;
+  --scrollbar-thumb-hover: #cdb194;
+  --checker-a: #f8efe4;
+  --checker-b: #ffffff;
+  --overlay: rgba(40, 22, 8, 0.26);
+  --shadow-menu: 0 18px 40px rgba(60, 32, 10, 0.14);
+  --shadow-modal: 0 30px 70px rgba(60, 32, 10, 0.18);
+  --shadow-toast: 0 12px 30px rgba(60, 32, 10, 0.12);
+}
+
+/*
+ * 让原生滚动条、表单控件、以及 iframe 内部的默认配色跟着切换。
+ * 由 CSS 按属性声明，而不是在 JS 里写内联样式，保持「JS 管属性、CSS 管表现」的分工。
+ *
+ * 开关的两个变量只分明暗、不随配色主题变化，因此集中在这里：
+ * 深色下轨道跟随该主题的 --bg-3（自动贴合各自色相），浅色下必须比 --bg-3 更深，
+ * 否则白色滑块会淹没在浅灰轨道里。
+ */
+[data-scheme="light"] {
+  color-scheme: light;
+  --switch-track: #c9c9ce;
+  --switch-knob: #ffffff;
+}
+
+[data-scheme="dark"] {
+  color-scheme: dark;
+  --switch-track: var(--bg-3);
+  --switch-knob: #ffffff;
+}

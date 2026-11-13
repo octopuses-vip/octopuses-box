@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS Info.plist 合并项（Tauri 打包时自动并入默认 Info.plist）。
+
+  NSAllowsLocalNetworking：允许 WKWebView 里的 JavaScript WebSocket 直连本机回环地址
+  （如浏览器自动化的 ws://127.0.0.1:9222/devtools/...）。ATS 默认禁止对 IP 地址的明文
+  连接，导致 CDP 协议动作（navigate / click / eval）全部握手失败——浏览器能被拉起，
+  却永远停在空白新标签页上。只放行本地网络，不对全 App 关闭 ATS。
+-->
+<plist version="1.0">
+  <dict>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsLocalNetworking</key>
+      <true/>
+    </dict>
+  </dict>
+</plist>

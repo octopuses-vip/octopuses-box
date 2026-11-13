@@ -1,0 +1,827 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.muted {
+  color: var(--text-2);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+.spacer {
+  flex: 1;
+}
+
+/* ============================ 窗口标题栏 ============================ */
+
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-0);
+}
+
+.titlebar {
+  height: var(--titlebar-height);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: var(--titlebar-leading);
+  padding-right: 12px;
+  background: var(--bg-0);
+  border-bottom: 1px solid transparent;
+  user-select: none;
+}
+
+.titlebar--scrolled {
+  border-bottom-color: var(--border);
+}
+
+.titlebar__brand {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+
+/* 应用 logo：标题栏、侧栏品牌位与登录页共用同一张图 */
+.brand-mark {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.brand-mark--sm {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.titlebar__crumb {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.titlebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/*
+ * 非 macOS：窗口无原生标题栏（`decorations: false`），右侧由 WindowControls 自绘最小化 /
+ * 最大化 / 关闭。按钮贴右边缘、占满标题栏高度，取消标题栏原有的右侧内边距。
+ */
+html[data-platform="windows"] .titlebar,
+html[data-platform="linux"] .titlebar {
+  padding-right: 0;
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.window-controls__btn {
+  width: 34px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+}
+
+.window-controls__btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.window-controls__btn--close:hover {
+  background: var(--danger-strong);
+  color: var(--text-on-strong);
+}
+
+/* ============================ 三栏骨架 ============================ */
+
+/*
+ * 三栏骨架（开发者 Jan）。
+ *
+ * 列宽统一由四个变量描述，普通状态按容器实宽限制右栏，保留主区最小宽度。
+ * 最大化单独使用 1fr，避免分数单位进入只接受长度的 min() 运算。
+ *   --col-sidebar  左侧栏
+ *   --col-main     中间主区（`minmax(0, 1fr)` 允许被压到 0，实现真正占满窗口）
+ *   --col-splitter 右栏分隔条（右栏收起时为 0，既不占位也点不到）
+ *   --col-right    右栏；始终以 `minmax(0, …)` 作上限，窗口变窄时会被压缩而不是把布局撑破
+ */
+.shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  container-type: inline-size;
+  --col-sidebar: var(--sidebar-width);
+  --col-main: minmax(0, 1fr);
+  --col-splitter: 0px;
+  --col-right: 0px;
+  grid-template-columns:
+    var(--col-sidebar) var(--col-main) var(--col-splitter)
+    minmax(
+      0,
+      min(
+        var(--col-right),
+        max(0px, calc(100% - var(--col-sidebar) - var(--col-splitter) - var(--main-min-width)))
+      )
+    );
+  transition: grid-template-columns var(--dur-base) var(--ease);
+}
+
+/* 右栏打开：让出分隔条与右栏宽度；右栏宽度可被分隔条的行内变量覆盖 */
+.shell--right-open {
+  --col-splitter: var(--splitter-width);
+  --col-right: var(--right-panel-width);
+}
+
+/* 右栏最大化：中间栏让位，右栏吃掉整块剩余空间 */
+.shell--right-open.shell--right-maximized {
+  --col-main: 0px;
+  grid-template-columns: var(--col-sidebar) 0px var(--col-splitter) minmax(0, 1fr);
+}
+
+.shell--sidebar-collapsed {
+  --col-sidebar: 0px;
+}
+
+/* 拖动分隔条期间关掉列宽过渡，否则列宽会追着 200ms 动画走、拖不跟手 */
+.shell--resizing {
+  transition: none;
+  cursor: col-resize;
+  user-select: none;
+}
+
+.shell__sidebar,
+.shell__main,
+.shell__right {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * 右栏分隔条：三栏栅格真正的第 4 个子元素。
+ *
+ * 右栏收起时所在列为 0px，因此不占位也命中不到；打开时承接拖动与双击还原。
+ * 高亮线画在居中的 ::before 上，避免整块命中区都变成可见色块。
+ */
+.shell__splitter {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.shell__splitter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
+}
+
+.shell__splitter:hover::before,
+.shell--resizing .shell__splitter::before {
+  width: 2px;
+  background: var(--border-strong);
+}
+
+/* ============================ 左侧栏 ============================ */
+
+.sidebar {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  background: var(--bg-1);
+  border-right: 1px solid var(--border);
+}
+
+/* 独立的图标导航栏：保持固定窄宽，项目和会话列表不会挤压这里的点击区。 */
+.sidebar__rail {
+  display: flex;
+  flex: 0 0 var(--sidebar-rail-width);
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 0;
+  padding: 10px 6px;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar__rail-main,
+.sidebar__rail-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+}
+
+.sidebar__rail-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--text-3);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.sidebar__rail-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.sidebar__rail-item--active {
+  background: var(--bg-active);
+  color: var(--text-1);
+}
+
+.sidebar__rail-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 13px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--text-on-strong);
+  font-size: 9px;
+  line-height: 13px;
+  text-align: center;
+}
+
+.sidebar__workspace {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.sidebar__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 8px 12px;
+}
+
+/*
+ * 分组容器（项目 / 会话记录）：用一条分隔线把「导航」与「工作区列表」切开。
+ * 两个分组各自带上边线，列表之间因此有稳定的分组边界，而不只是靠留白区分。
+ */
+.sidebar__section {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* 分组头：折叠按钮吃掉剩余宽度（悬停底色因此是整行），右侧留给「添加」类动作 */
+.sidebar__section-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/*
+ * 分组标题（开发者 Jan）
+ *
+ * 左内边距取 4px 是为了让折叠箭头与项目行里的折叠箭头落在一起：
+ * 项目行的箭头按钮宽 18px、图标居中，11px 的图标左边缘在 3.5px。
+ * 两个箭头的「尖」对齐成一条竖线，分组头和下面的树才像一个整体。
+ * 中文没有大小写，因此不再用 uppercase 与 letter-spacing。
+ */
+.sidebar__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 6px 5px 4px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.sidebar__label:hover {
+  background: var(--bg-hover);
+  color: var(--text-2);
+}
+
+/* 分组数量：与项目行徽标同形，收起分组时也能看到里面有多少条 */
+.sidebar__count {
+  flex: 0 0 auto;
+  min-width: 17px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* 分组头右侧的图标按钮（添加项目）：比导航行小一号，避免抢走标题的注意力 */
+.sidebar__icon-btn {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+}
+
+.sidebar__icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+/* 列表空态与侧栏内的提示文案共用一个形态 */
+.sidebar__empty {
+  padding: 6px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/*
+ * 折叠箭头（开发者 Jan）
+ *
+ * 展开与收起共用同一个右向箭头，靠 rotate 过渡表达状态，
+ * 而不是在两个图标之间硬切换——后者没有中间帧，看起来是「跳」了一下。
+ */
+.tree-chevron {
+  flex: 0 0 auto;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.tree-chevron--open {
+  transform: rotate(90deg);
+}
+
+/* 列表容器：行间距统一在这里，行本身不再各自设间距 */
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/*
+ * 会话记录列表的缩进（开发者 Jan）
+ *
+ * 与「项目」分组下的任务列表取同一个内容列（26px），两个分组上下相邻时图标成一条竖线，
+ * 不会因为一边有折叠箭头、一边没有而错开。
+ */
+.tree--nested {
+  padding-left: 18px;
+}
+
+/* 项目节点：一级分类「项目」下的每个项目（二级），其任务嵌在节点内部 */
+.project-node {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * 项目行（开发者 Jan）
+ *
+ * 这里刻意不留 gap：折叠箭头宽 18px，加上行内 8px 左内边距，
+ * 文件夹图标正好落在 26px —— 与下面任务行的图标同列，父子左边界才对得齐。
+ */
+.project-node__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* 项目行与展开箭头同处一行：项目行吃掉剩余宽度，避免窄窗口下名称被挤出。
+ * 项目名加重大字号半档字重（600）：父行必须比任务行更重，层级才不只靠缩进。 */
+.project-node__head > .nav-item {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  font-weight: 600;
+}
+
+/* 展开箭头只负责折叠，不切换当前项目 */
+.project-node__toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+}
+
+.project-node__toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+/*
+ * 项目行右侧的「+」（开发者 Jan）
+ *
+ * 默认隐藏但保留占位，避免悬停时整行宽度跳动；隐藏时同时关掉命中，
+ * 否则会有一个看不见却点得到的按钮压在行尾。
+ * 悬停、键盘聚焦到该行，或该项目正是当前项目时显现。
+ */
+.project-node__add {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.project-node__head:hover .project-node__add,
+.project-node__head:focus-within .project-node__add,
+.project-node--active .project-node__add {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.project-node__add:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/*
+ * 项目行的维护入口：编辑 / 删除（开发者 Jan）
+ *
+ * 项目列表只在左栏维护这一份，因此编辑与删除收进项目行。显现规则与上面的「+」一致
+ * （悬停整行或键盘聚焦到行内），三枚图标在行末簇成一排。
+ *
+ * 定位方式与会话行、右栏列表行不同：这里刻意**不**让位行内右内边距。
+ * 左栏只有 260px，项目行还额外占着 18px 折叠箭头与 22px「+」，若悬停时再撑出 84px，
+ * 项目名会被截到只剩四五个字——而悬停本就是点它之前必经的一步。
+ * 操作组绝对定位，落点正好压在任务数徽标那一小格上（徽标 30px + 间隙 9px ≈ 两枚 22px 图标），
+ * 所以悬停期间把徽标隐去让位：徽标是数量标注、鼠标移开即回，
+ * 代价比「每次划过项目名都跳一下」小得多。
+ * 绝对定位不占流内宽度，显现过程没有整行重排。
+ */
+.project-node__actions {
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.project-node__head:hover .project-node__actions,
+.project-node__actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 让位的徽标：显隐交给上面同一条悬停规则，这里只补过渡，避免瞬间消失 */
+.project-node__head .nav-item__badge {
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.project-node__head:hover .nav-item__badge,
+.project-node__head:focus-within .nav-item__badge {
+  opacity: 0;
+}
+
+.project-node__action {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+}
+
+.project-node__action:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+/* 删除的二次确认态：与左栏会话行的删除入口同一外观 */
+.project-node__action--danger {
+  width: auto;
+  padding: 0 7px;
+  background: var(--danger);
+  color: var(--text-on-strong);
+}
+
+.project-node__confirm-text {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+/*
+ * 任务缩进与树形连线（开发者 Jan）
+ * 左内边距 24px 让任务整体比项目名多缩进一档：不再与父项目图标对列，
+ * 父子层级靠「缩进差 + 连线 + 字号差」共同表达，任务一眼可辨是子项。
+ *
+ * 树形参考线不用「容器一条通线」，而是拆成每条任务行自带的一段竖线：
+ * 容器通线无法知道最后一行在哪里，只能整段拉到底，结果会在最后一个任务下方
+ * 继续延伸一截（像还有子项）；逐行的竖线可以用 `:last-child` 精准收尾成 └。
+ * 相邻两行各自向外溢 1px，正好吃掉 `.thread-list` 的 2px 行间距，线段因此看不出接缝。
+ */
+.project-node__tasks {
+  position: relative;
+  padding: 1px 0 2px 24px;
+}
+
+.project-node__tasks .thread-item::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: -1px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--border-strong);
+}
+
+/* 最后一个任务只画到与横向连线相交处，收尾成 └ */
+.project-node__tasks .thread-item:last-child::before {
+  bottom: 50%;
+}
+
+/* 横向连接线：从竖线接到行左边界，缩进不再是无源之水 */
+.project-node__tasks .thread-item::after {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 9px;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+/*
+ * 任务行的「子项」质感（开发者 Jan）
+ *
+ * 光靠缩进和 12px 字号层级仍糊：项目与任务选中时是两块同色同高的药丸并排。
+ * 这里把子项整体调轻——标题减重到 400、行高收窄（上下 4px），
+ * 选中态不再沿用项目行的实底（--bg-active），改用更浅的 hover 底色
+ * 加 2px 主题色左标；父行重、子行轻、选中样式也不同，三层区分同时生效。
+ */
+.project-node__tasks .thread-item__open {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.project-node__tasks .thread-item__title {
+  font-weight: 400;
+}
+
+.project-node__tasks .thread-item--active {
+  background: var(--bg-hover);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/*
+ * 侧栏行的基准字号（开发者 Jan）
+ *
+ * 显式写死而不是靠继承：这一行的文字是左栏的「父级」字号（项目名、一级导航），
+ * 下面任务 / 会话标题要比它小一档，两处都必须有确定值，层级才是可控的。
+ */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.nav-item--active {
+  background: var(--bg-active);
+  color: var(--text-1);
+}
+
+.nav-item__label {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-item__badge {
+  flex: 0 0 auto;
+  min-width: 18px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  background: var(--bg-3);
+  border-radius: var(--radius-pill);
+  line-height: 16px;
+  text-align: center;
+  padding: 0 6px;
+}
+
+/*
+ * 右栏列表行（开发者 Jan）。
+ *
+ * 外层是容器、内层是「选中」按钮，右侧并列一个「导出」按钮——按钮不能互相嵌套，
+ * 所以不能像侧栏那样把整行做成一个按钮。这里只把容器的间距收紧，让两个按钮贴合，
+ * 选中与悬停的视觉仍沿用 .nav-item / .nav-item--active。
+ */
+.file-row {
+  gap: 2px;
+  padding-right: 4px;
+}
+
+/* 行的点击区：吃掉除导出按钮外的全部宽度，标题过长时省略而不是撑开行 */
+.nav-item__select {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  text-align: left;
+  color: inherit;
+}
+
+.thread-item {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+}
+
+.thread-item:hover {
+  background: var(--bg-hover);
+}
+
+.thread-item--active {
+  background: var(--bg-active);
+  color: var(--text-1);
+}
+
+/* 会话列表容器：行间距统一在这里 */
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/*
+ * 打开会话的点击区（开发者 Jan）
+ *
+ * 行内是「图标 + 文字块」两列：图标占固定 15px，与项目的文件夹图标同列宽，
+ * 于是任务标题与项目名称落在同一条竖线上。
+ * 右内边距在悬停时放大到刚好容下操作组（见下），标题因此自动收窄让位，
+ * 而不是被浮在上面的按钮压住。
+ */
+.thread-item__open {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+  color: inherit;
+  transition: padding-right var(--dur-fast) var(--ease);
+}
+
+.thread-item:hover .thread-item__open,
+.thread-item:focus-within .thread-item__open {
+  padding-right: 92px;
+}
+
+/* 图标槽固定 15px 宽：图标在里面居中，比文件夹图标小一号，层级上一眼看出是子项 */
+.thread-item__icon {
+  flex: 0 0 15px;
+  display: grid;
+  place-items: center;
+  height: 18px;
+  color: var(--text-3);
+}
+
+/* 标题与时间两行：横向不再单独设间距，两行之间用 1px 收紧 */
+.thread-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 复制对话内容：默认隐藏，悬停或键盘聚焦到该行时出现 */
+.thread-item__copy {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.thread-item:hover .thread-item__copy,
+.thread-item__copy:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}

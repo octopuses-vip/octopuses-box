@@ -1,0 +1,23 @@
+[package]
+name = "ots-tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "ots-cli 内置工具集：shell / read_file / write_file / apply_patch / test_runner"
+
+[dependencies]
+async-trait = "0.1.92"
+ots-config.workspace = true
+ots-core.workspace = true
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+serde_yaml = "0.9"
+similar = "3.1.1"
+thiserror = "2.0.21"
+tokio = { version = "1.53.1", features = ["process", "io-util", "fs", "sync", "time", "macros", "rt", "rt-multi-thread"] }
+tokio-util = { version = "0.7.19", features = ["rt"] }
+tracing = "0.1.44"
+
+[dev-dependencies]
+tempfile = "3.27.0"

@@ -1,0 +1,869 @@
+
+.menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 260px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+  box-shadow: var(--shadow-menu);
+  z-index: 40;
+}
+
+.menu--right {
+  left: auto;
+  right: 0;
+}
+
+.menu__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.menu__item:hover {
+  background: var(--bg-hover);
+}
+
+.menu__item-title {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+}
+
+.menu__item-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.menu__check {
+  color: var(--success);
+}
+
+/* 菜单内的行内表单（如「附加上下文」的路径输入） */
+.menu__form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+}
+
+.menu__input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  padding: 6px 9px;
+  font-size: var(--fs-base);
+  outline: none;
+}
+
+.menu__hint {
+  padding: 4px 6px 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  word-break: break-all;
+}
+
+.context-menu__trigger {
+  position: relative;
+}
+
+.context-menu__count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 14px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.menu.context-menu__panel {
+  left: auto;
+  right: 10px;
+  width: min(300px, calc(100% - 20px));
+  min-width: 0;
+}
+
+.context-menu__action,
+.context-menu__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.context-menu__entries {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.context-menu__entry {
+  padding-left: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.context-menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 4px 8px;
+  padding: 6px 4px 0;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 4px;
+  color: var(--text-2);
+}
+
+/* ============================ 右侧面板 ============================ */
+
+/* 与中间栏的分隔线由 .shell__splitter 承担，这里不再画边框，避免出现双线 */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-1);
+}
+
+.right-panel__tabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.right-panel__tab-list {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  gap: 2px;
+}
+
+.right-panel__tab-list > .tab {
+  flex-shrink: 0;
+}
+
+.right-panel__tab-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.tab {
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-1);
+}
+
+.tab--active {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.right-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+/* 空态里补一行产物目录的绝对路径：tab 保留但目录空着时，用户至少知道文件该落在哪、去哪找 */
+.panel-empty__path {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  word-break: break-all;
+}
+
+.browser-frame {
+  margin: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-2);
+}
+
+.browser-frame__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.browser-frame__dots {
+  display: flex;
+  gap: 5px;
+}
+
+.browser-frame__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.browser-frame__url {
+  flex: 1;
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.browser-frame__viewport {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/*
+ * 网页预览占满右栏可用高度（开发者 Jan）。
+ *
+ * 高度从右栏 → .web-preview → .browser-frame → 预览视口逐级传递，
+ * iframe 因此能拿到一个确定且等于可用空间的高度，页面才会真正铺满屏幕；
+ * 之前给视口写死固定高度，窗口一高就在下方留出大片空白。
+ */
+.web-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.web-preview .browser-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 预览区：去掉内边距，把可用高度整块让给 iframe */
+.browser-frame__viewport--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: block;
+  padding: 0;
+  background: var(--bg-preview);
+}
+
+/* 源码视图与预览共用同一块空间，超长时自身滚动而不是把容器顶高 */
+.web-preview__source {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 底部说明收成一行小字，避免再吃掉一块预览高度 */
+.web-preview .panel-empty {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.browser-frame__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg-preview);
+}
+
+.file-preview {
+  margin: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+/* 「文件」tab 根容器：文件列表在上，预览卡片占满剩余高度 */
+.file-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/*
+ * 文件列表占 tab 至多 45%（开发者 Jan）。
+ *
+ * 不用 `flex: 0 1 auto` 让两边自由收缩：flex 收缩按内容基准尺寸分摊，
+ * 预览内容一长就把列表挤到只剩一两行（文件多时几乎看不到）。
+ * 这里给列表一个保底配额——自身超高就内部滚动，剩余空间全归预览。
+ */
+.file-tab__list {
+  flex: 0 0 auto;
+  max-height: 45%;
+  overflow-y: auto;
+}
+
+/* 预览卡片撑满 tab 剩余高度，滚动交给内容区自己 */
+.file-preview--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-preview--fill .file-preview__code {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.file-preview__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.file-preview__code {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Markdown 产物：沿用对话区 .md 的排版，只补内边距；高度由 --fill 撑满、内部滚动 */
+.file-preview__md {
+  padding: 4px 12px 12px;
+}
+
+.file-preview--fill .file-preview__md {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 图片产物：棋盘背景衬托透明图，图片按容器等比缩放 */
+.media-preview__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: repeating-conic-gradient(var(--checker-a) 0% 25%, var(--checker-b) 0% 50%) 50% / 16px 16px;
+}
+
+.media-preview__image {
+  max-width: 100%;
+  max-height: 520px;
+  border-radius: var(--radius-md);
+}
+
+/* ============================ 3D 图纸预览 ============================ */
+
+/*
+ * 3D 图纸 tab（开发者 Jan）。
+ *
+ * 沿用「网页」tab 的铺满范式：整块与右栏等高，列表占固定高度并自行滚动，
+ * 视图区吃掉剩余高度，因此窗口越高、模型能占的区域越大。
+ */
+.model-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 图纸列表：条目可能很多，因此限定最大高度并独立滚动，不与视图区抢空间 */
+.model-preview__list {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+/* 视图区：画布与覆盖层共用这一块定位基准 */
+.model-preview__stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+
+/* 空态文案在视图区里垂直居中，而不是顶着顶部 */
+.model-preview__stage .panel-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 20px;
+  line-height: 1.8;
+}
+
+/* 画布宿主：three.js 渲染出来的 canvas 会被塞进这里 */
+.drawing-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+.drawing-viewer__host {
+  width: 100%;
+  height: 100%;
+}
+
+/* 去掉 canvas 的基线间隙，避免画布底部多出一条缝 */
+.drawing-viewer__host canvas {
+  display: block;
+}
+
+/*
+ * 状态覆盖层：加载 / 失败 / DWG 引导文案共用。
+ *
+ * 直接用不透明底色盖住画布——这三种状态下本就没有可看的内容，不需要透出下面的空白。
+ */
+.drawing-viewer__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-2);
+  background: var(--bg-2);
+  font-size: var(--fs-sm);
+}
+
+.drawing-viewer__overlay--error {
+  color: var(--danger);
+}
+
+.drawing-viewer__overlay--hint {
+  color: var(--text-3);
+  line-height: 1.8;
+}
+
+/* PDF 产物：交给 WebView 自带的阅读器渲染；高度由 --fill 撑满 */
+.pdf-preview__frame {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
+  background: var(--bg-2);
+}
+
+/* 表格产物：首行表头固定，单元格超宽时横向滚动而不是撑破右栏 */
+.table-preview {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.table-preview__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.table-preview__table th,
+.table-preview__table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table-preview__table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-weight: 500;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+}
+
+.image-tile {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: end start;
+  padding: 8px;
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  background: var(--gradient-hero);
+}
+
+.review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.review-row__title {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+}
+
+.review-row__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.badge {
+  font-size: var(--fs-xs);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+}
+
+.badge--ok {
+  color: var(--success);
+  border-color: var(--success-border);
+}
+.badge--warn {
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+.badge--info {
+  color: var(--info);
+  border-color: var(--info-border);
+}
+
+/* ============================ 通用页面（自动化/技能等） ============================ */
+
+.page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 26px 32px 40px;
+}
+
+.page__inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.page__title {
+  font-size: var(--fs-xl);
+  font-weight: 750;
+  margin: 0 0 4px;
+  letter-spacing: -0.025em;
+}
+
+.page__desc {
+  color: var(--text-2);
+  margin: 0 0 22px;
+  font-size: var(--fs-md);
+  line-height: 1.7;
+  /* 各页正文里会内联缓存目录等绝对路径：长路径没有空格，必须允许在任意位置折行 */
+  overflow-wrap: anywhere;
+}
+
+.page__section {
+  margin-top: 26px;
+}
+
+.page__section-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+/* 设置按分类展示，样式仅作用于设置页。 */
+.settings-page .page__inner {
+  max-width: 860px;
+}
+
+.settings-header {
+  padding: 8px 0 20px;
+}
+
+.settings-header .page__desc {
+  margin: 6px 0 0;
+}
+
+.settings-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 12px 0 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* 标签行：下划线式标签坐在容器底边上，激活项用主色短线标记（开发者 Jan） */
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.settings-tabs__tab {
+  position: relative;
+  min-height: 34px;
+  padding: 6px 14px;
+  border-radius: 8px 8px 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.settings-tabs__tab:hover {
+  color: var(--text-1);
+  background: var(--bg-2);
+}
+
+.settings-tabs__tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.settings-tabs__tab--active {
+  color: var(--text-1);
+  background: var(--bg-2);
+}
+
+/* 激活下划线：贴住标签底边，与容器分隔线齐平 */
+.settings-tabs__tab--active::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.settings-navigation__description {
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+.settings-content {
+  min-width: 0;
+  padding: 4px 0 24px;
+}
+
+.settings-content > .page__section:first-child {
+  margin-top: 0;
+}
+
+.settings-content .page__section {
+  margin-top: 32px;
+  padding: 20px 22px 22px;
+}
+
+.settings-content .page__section-label {
+  margin: 0 0 18px;
+  color: var(--text-1);
+  font-size: var(--fs-lg);
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.settings-navigation__select label,
+.form__label,
+.project-dialog__label {
+  font-weight: 650;
+}
+
+.settings-navigation__description,
+.settings-content .list-row__desc {
+  font-size: var(--fs-base);
+}
+
+.settings-content .list-row {
+  padding: 18px 20px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.settings-content .list-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-content .list-row__main {
+  flex: 1 1 220px;
+  min-width: 0;
+  gap: 6px;
+}
+
+.settings-content .list-row__desc,
+.settings-content .page__desc {
+  line-height: 1.7;
+}
+
+.settings-content .list-row > :not(.list-row__main) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.settings-content .list-row > .btn,
+.settings-content .list-row > .segmented {
+  flex-shrink: 0;
+}
+
+.settings-content .list-row > .segmented {
+  flex-wrap: wrap;
+}
+
+/* 所有管理页共享的收缩规则：长路径、模型名和按钮组不能把主区撑出视口。 */
+.page,
+.page__inner,
+.page__section,
+.card,
+.form-card,
+.list-row,
+.card-grid,
+.form-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.page__inner {
+  width: min(100%, 900px);
+}
+
+.page__section,
+.card,
+.form-card {
+  overflow: hidden;
+}
+
+.settings-navigation,
+.login__actions,
+.form__actions {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.settings-navigation__description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-content .theme-card {
+  padding: 16px;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .settings-navigation {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .settings-navigation__select {
+    flex-basis: auto;
+  }
+
+  .settings-navigation__description {
+    margin-top: 0;
+  }
+
+  .settings-content .list-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .settings-content .list-row__main {
+    flex-basis: 100%;
+  }
+}

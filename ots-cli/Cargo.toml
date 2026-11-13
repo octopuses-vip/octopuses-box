@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.2.1"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+description = "ots-cli —— octopuses 项目的命令行软件工程 Agent"
+repository = "https://github.com/octopuses-vip/octopuses-box"
+
+[workspace.dependencies]
+ots-core = { path = "crates/ots-core", version = "0.2.1" }
+ots-config = { path = "crates/ots-config", version = "0.2.1" }
+ots-llm = { path = "crates/ots-llm", version = "0.2.1" }
+ots-tools = { path = "crates/ots-tools", version = "0.2.1" }
+ots-sandbox = { path = "crates/ots-sandbox", version = "0.2.1" }
+
+[profile.release]
+lto = "thin"
+strip = "symbols"

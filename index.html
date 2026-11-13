@@ -1,0 +1,50 @@
+<!doctype html>
+<!--
+  data-persist-key / data-default-theme 供下面的首屏防闪脚本读取，
+  避免把「落盘键」与「默认主题」在 HTML 与 TypeScript 里各写一份：
+  src/app/theme.ts 的 assertBootContract() 会在开发模式下校验两者一致。
+-->
+<html lang="zh-CN" data-persist-key="octopuses" data-default-theme="graphite">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      /*
+       * 主题首屏防闪（开发者 Jan）。
+       *
+       * 必须抢在样式表之前执行：生产构建会把 CSS 抽成 <head> 里的 <link>，
+       * 它先于 body 末尾的模块脚本被解析，若等到 React 挂载后再设置主题，
+       * 「浅色主题 + 冷启动」会先闪一帧深色。
+       * 这里与 src/hooks/useTheme.ts 的职责不重叠：本段只负责首屏那一次，
+       * 运行期的系统切换与用户改选一律由 useTheme 处理。
+       */
+      (function () {
+        try {
+          var root = document.documentElement;
+          var key = root.dataset.persistKey;
+          var raw = key ? window.localStorage.getItem(key) : null;
+          var state = raw ? JSON.parse(raw).state : null;
+          var preference = state && state.themeScheme;
+          if (preference !== "light" && preference !== "dark") preference = "system";
+          root.dataset.theme = (state && state.themeId) || root.dataset.defaultTheme;
+          root.dataset.scheme =
+            preference === "system"
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : preference;
+        } catch (error) {
+          // 读不到或解析失败就保持无属性状态，由 themes.css 的 :root 兜底，
+          // 随后 useTheme 挂载时会把正确值补上，绝不让主题影响客户端启动。
+        }
+      })();
+    </script>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>octopuses</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

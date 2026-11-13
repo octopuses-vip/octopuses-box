@@ -1,0 +1,682 @@
+
+@container main (max-width: 720px) {
+  .page {
+    padding: 20px 16px 32px;
+  }
+
+  .page__inner {
+    width: 100%;
+  }
+
+  .settings-navigation {
+    gap: 10px;
+  }
+
+  /* 窄屏下标签允许换行成两行，避免横向滚动 */
+  .settings-tabs {
+    flex-wrap: wrap;
+  }
+
+  .settings-navigation__description {
+    margin: 0;
+  }
+
+  .settings-content .list-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .settings-content .list-row__main {
+    flex-basis: 100%;
+  }
+
+  .settings-content .list-row > .btn,
+  .settings-content .list-row > .segmented {
+    margin-left: auto;
+  }
+
+  .settings-content .page__section > div[style*="display: flex"] > .form__input {
+    flex: 1 1 220px;
+    width: auto !important;
+  }
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 10px;
+}
+
+.card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 13px 14px;
+  text-align: left;
+}
+
+/* 直接纵向排列的内容卡片保留间距，不影响网格或卡片内部布局。 */
+.page__section > .card + .card {
+  margin-top: 12px;
+}
+
+.card--selectable {
+  cursor: pointer;
+}
+
+.card--selectable:hover,
+button.card:hover,
+a.card[href]:hover,
+.card[role="button"]:hover {
+  border-color: var(--border-strong);
+}
+
+.card--selected {
+  border-color: var(--accent);
+  background: var(--bg-2);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/*
+ * 卡片标题是 `.card__head` 这个 flex 行里的子项（默认 min-width: auto），
+ * 标题一旦偏长就会把右侧的徽标顶出卡片；与 `.tool-card__title` 同口径压成单行省略号。
+ */
+.card__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__desc {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  /* 兜底：长且不含空格的串（如主机密钥指纹）必须能在任意位置折行，否则会冲出卡片边界 */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 远程主机卡片（开发者 Jan）。
+ *
+ * 主机密钥指纹是「SHA256:」+ 43 字符 base64，无空格、不会自动折行，
+ * 塞进 240px 宽的卡片必然溢出；因此不再把裸串直接铺在正文里，而是：
+ * 地址独占一行（主信息）→ 认证方式与凭据状态压成一行标签 → 指纹单独成块，
+ * 块内只显示首尾摘要，完整值走 `title` 悬停与「复制」按钮。
+ */
+.ssh-card__endpoint {
+  font-size: var(--fs-base);
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+}
+
+.ssh-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ssh-card__fingerprint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 4px 4px 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+}
+
+.ssh-card__fingerprint-label {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.ssh-card__fingerprint-value {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+/* 卡片底部说明行：既放「尚未建立信任」的占位，也放测试连接的即时结果 */
+.ssh-card__note {
+  margin-top: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.ssh-card__note--fail {
+  color: var(--danger);
+}
+
+.ssh-card__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 10px;
+}
+
+/*
+ * 主题选择卡片（开发者 Jan）。
+ *
+ * 每张卡片自带 `data-theme` / `data-scheme` 属性，于是卡内的 `var(--bg-0)` 等
+ * 会按该主题自己的色板解析，色卡预览因此不需要在 TypeScript 里抄任何色值。
+ * 选中态与悬停沿用 `.card` / `.card--selected` 的语义，保证与设置页其它卡片一致。
+ */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 10px;
+  /* 紧跟其后的 list-row（明暗模式行）自带 margin-top 前先隔开主题卡网格，
+     避免两张带边框的卡片贴在一起（开发者 Jan） */
+  margin-bottom: 16px;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+
+.theme-card:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.theme-card--active {
+  border-color: var(--accent);
+  background: var(--bg-2);
+}
+
+/* 四色预览条：取该主题最直观的四个语义色，帮用户一眼区分预设 */
+.theme-card__swatches {
+  display: flex;
+  gap: 4px;
+  height: 22px;
+}
+
+.theme-card__swatch {
+  flex: 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.theme-card__swatch--bg {
+  background: var(--bg-0);
+}
+
+.theme-card__swatch--surface {
+  background: var(--bg-3);
+}
+
+.theme-card__swatch--accent {
+  background: var(--accent);
+}
+
+.theme-card__swatch--info {
+  background: var(--info);
+}
+
+.theme-card__label {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.theme-card__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  line-height: 1.4;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  margin-bottom: 8px;
+}
+
+.list-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list-row__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.list-row__desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+/* 可点击的列表行（如自动化运行记录）：整行作为按钮，悬停给出反馈 */
+.list-row--action {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.list-row--action:hover {
+  border-color: var(--border-strong);
+}
+
+/* 纵向堆叠的列表行：行内编辑表单用，输入框与按钮纵向排开 */
+.list-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* 内容较高的列表行（主区域容纳试调用区等表单）：尾部徽标与操作改为顶部对齐，
+   否则纵向居中后会与标题、说明脱节，看起来像浮在中间 */
+.list-row--top {
+  align-items: flex-start;
+}
+
+/* 列表行内的主区域按钮：铺满剩余宽度并左对齐，外观沿用行本身 */
+.list-row__main--click {
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-row__main--click:hover .list-row__title {
+  color: var(--text-1);
+}
+
+/* 搜索结果的正文命中片段：限制两行，超出省略 */
+.search-hit__snippet {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.search-hit__mark {
+  background: var(--warning);
+  color: var(--text-on-strong);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* 页面内联表单（如新建自动化任务） */
+.form__row {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.form__label {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.form__input,
+.form__select,
+.form__textarea {
+  font-weight: 450;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 8px 12px;
+  font-size: var(--fs-md);
+  outline: none;
+}
+
+.form__input:focus,
+.form__select:focus,
+.form__textarea:focus {
+  border-color: var(--border-strong);
+}
+
+.form__textarea {
+  min-height: 84px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* JSON / 代码类输入：等宽字体 + 不换行，让缩进层级和括号对齐可读 */
+.form__textarea--code {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form__grid > .form__row {
+  margin-bottom: 0;
+}
+
+.card__head + .form__grid,
+.form-card > .card__head {
+  margin-bottom: 12px;
+}
+
+.card__head + .form__grid {
+  margin-top: 12px;
+}
+
+@container main (max-width: 560px) {
+  .form__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .main-head__usage {
+    flex-basis: 100%;
+  }
+}
+
+/*
+ * 表单分组（开发者 Jan）。
+ *
+ * 字段一多，平铺成一个 grid 会看不出主次。这里按语义切成若干段：段与段之间用细线隔开，
+ * 每段给一个小标题，第一段不画线，避免和卡片头部贴出双线。
+ */
+.form__section {
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.form__section:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+
+.form__section-title {
+  margin-bottom: 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+/* 字段说明：解释这个输入框收什么、格式如何，补足 placeholder 一滚动就看不见的短板 */
+.form__hint {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/* 必填标记：只是视觉提示，真正的拦截仍在提交前的前置校验里 */
+.form__required {
+  margin-left: 2px;
+  color: var(--danger);
+}
+
+/* 一行「说明 + 开关」：用于启用/停用这类不需要输入框的字段 */
+.form__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 表单底部操作行：与正文用分隔线断开，按钮统一右对齐 */
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* 表单卡片比内容卡片留更多内边距，输入框贴边会显得局促 */
+.form-card {
+  padding: 16px;
+}
+
+.switch {
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--switch-track);
+  position: relative;
+  transition: background var(--dur-fast) var(--ease);
+  flex: 0 0 auto;
+}
+
+.switch--on {
+  background: var(--success);
+}
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--switch-knob);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.switch--on .switch__knob {
+  transform: translateX(14px);
+}
+
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 0 12px;
+  height: 38px;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.search-input:focus-within {
+  border-color: var(--info);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--info) 12%, transparent);
+}
+
+.search-more {
+  margin-top: 16px;
+}
+
+.search-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: var(--fs-md);
+}
+
+.empty-state {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  width: min(100%, 760px);
+  margin-inline: auto;
+  padding: 48px 32px;
+  text-align: left;
+}
+
+.empty-state__mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  color: var(--accent);
+}
+
+.empty-state__eyebrow {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+}
+
+.empty-state__desc {
+  margin: -6px 0 10px;
+  color: var(--text-2);
+  max-width: 440px;
+}
+
+.empty-state__title {
+  font-size: clamp(21px, 2.4vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: min(100%, 620px);
+}
+
+.suggestion {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  padding: 16px;
+  text-align: left;
+  font-size: var(--fs-base);
+  color: var(--text-2);
+  line-height: 1.65;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.suggestion:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-2);
+  color: var(--text-1);
+}
+
+@container main (max-width: 500px) {
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 22px 18px 32px;
+  }
+}
+
+/* ---- 终端 ---- */
+
+.terminal {
+  flex: 0 0 auto;
+  height: 210px;
+  border-top: 1px solid var(--border);
+  background: var(--terminal-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--terminal-bg);
+  border-bottom: 1px solid var(--terminal-border);
+  font-size: var(--fs-xs);
+  color: var(--terminal-text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.terminal__head > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.terminal__head .terminal__status {
+  border-color: var(--terminal-border);
+  color: var(--terminal-text);
+}
+
+.terminal__head .terminal__status--connected {
+  color: var(--terminal-success);
+}
+
+.terminal__head .terminal__status--exited,
+.terminal__head .terminal__status--unavailable {
+  color: var(--terminal-danger);
+}
+
+.terminal__head button {
+  color: var(--terminal-text);
+}
+
+.terminal__head button:hover:not(:disabled),
+.terminal__head button:focus-visible {
+  background: var(--terminal-border);
+  color: var(--terminal-text-strong);
+}
+
+.terminal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 12px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
