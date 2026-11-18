@@ -92,9 +92,11 @@ fn build_command(
         return Err("命令不能为空".to_string());
     }
 
+    let required = sandbox.as_ref().is_some_and(|s| s.options.enabled);
     let wrapped = sandbox.and_then(|request| {
         sandbox::wrap_shell_command(command, request.workspace, request.options)
     });
+    if required && wrapped.is_none() { return Err("无法建立命令沙箱：macOS 需要 Seatbelt，Linux 需要可用的 bubblewrap，Windows 需要 Docker 及 octopuses-runner:local 镜像。命令没有执行。".into()); }
     let enforced = wrapped.is_some();
     let mut shell = match wrapped {
         Some((program, args)) => {
@@ -128,6 +130,9 @@ fn build_command(
 
 /// 启动子进程、收集输出，并在超时后强制终止
 fn spawn_and_collect(mut command: Command, timeout: Duration) -> Result<ShellResult, String> {
+    let arguments = command.get_args().map(|s| s.to_string_lossy().into_owned()).collect::<Vec<_>>();
+    let container = if command.get_program() == "docker" { arguments.iter().position(|v| v == "--name").and_then(|i| arguments.get(i + 1)).cloned() } else { None };
+    #[cfg(unix)] { use std::os::unix::process::CommandExt; command.process_group(0); }
     let mut child = command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -159,7 +164,9 @@ fn spawn_and_collect(mut command: Command, timeout: Duration) -> Result<ShellRes
             Ok(None) => {
                 if Instant::now() >= deadline {
                     timed_out = true;
+                    #[cfg(unix)] { extern "C" { fn kill(pid: i32, signal: i32) -> i32; } unsafe { kill(-(child.id() as i32), 9); } }
                     let _ = child.kill();
+                    if let Some(name) = &container { let mut cleanup = Command::new("docker"); cleanup.args(["rm", "--force", name]).stdout(Stdio::null()).stderr(Stdio::null()); crate::platform::hide_console(&mut cleanup); let _ = cleanup.status(); }
                     break child.wait().ok().and_then(|status| status.code());
                 }
                 thread::sleep(POLL_INTERVAL);

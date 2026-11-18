@@ -1,3 +1,8 @@
+import { LIVE_BROWSER_TOOL } from "../tools/liveBrowser";
+import { SELECT_WORKSPACE_TOOL } from "../tasks/workspaces";
+import { memoryContext } from "../memories/store";
+import { taskKey, taskState, taskInstruction } from "../tasks/store";
+import { TASK_TOOLS, PLAN_READ_TOOLS } from "../tasks/tools";
 
 import { prepareArtifactDir } from "../app/desktop/artifacts";
 import { isDesktopRuntime } from "../app/desktop/runtime";
@@ -105,6 +110,9 @@ import {
 /**
  * 一次运行里最多保留几张截图回灌给模型：截图体积大，无限累积会撑爆上下文
  */
+import { VIDEO_TOOL, VIDEO_TOOL_NAME } from "../video/protocol";
+import { TRANSCRIBE_AUDIO_TOOL } from "../audio/protocol";
+import { generateVideo, videoHistoryResult, videoForTurn } from "../video/generate";
 import { runToolCall } from "./agentToolCall";
 import { AgentExecutionResult, AgentExecutor, buildHistory, describeStopReason, hasProducedArtifact, persistRunSnapshot, runSlot, waitForAutomationApproval, waitForCommandApproval, awaitWithAbort, pushItemInto, createApprovalMirror, subagentApprovalMirrors } from "./useAgentRunShared";
 /** Agent 单轮执行器：组装上下文、调用模型并处理工具结果（开发者 Jan）。 */
@@ -164,7 +172,7 @@ export function createAgentExecutor(
       // 子代理会话（由 run_subagent 派生）一律不挂 ask_user：委派出去的任务无人值守，
       // 需要确认时应由主代理在父会话层面提问，而不是把问题抛给一个没有用户在场的子会话。
       const isSubagentThread = Boolean(thread?.parentThreadId);
-      const askUserAllowed = !isSubagentThread && !hasProducedArtifact(store.messages[threadId]);
+      const askUserAllowed = !isSubagentThread && !hasProducedArtifact(store.messages[threadId], (id) => videoForTurn(store, id)?.phase === "done");
       // 子代理委派：只有在嵌套深度上限内才挂出 run_subagent，避免无限派生
       const subagentDepth = threadDepth(store.threads, threadId);
       const canSpawnSubagent = subagentDepth < MAX_SUBAGENT_DEPTH;
@@ -176,6 +184,8 @@ export function createAgentExecutor(
       const availableTools: ChatTool[] = filterDisabledTools(store, [
         WRITE_FILE_TOOL,
         IMAGE_GEN_TOOL,
+        ...(isDesktopRuntime() && selectModelConnectionByCode(store, store.videoModelCode) ? [VIDEO_TOOL] : []),
+        ...(isDesktopRuntime() && selectModelConnectionByCode(store, store.audioModelCode) ? [TRANSCRIBE_AUDIO_TOOL] : []),
         WEB_SEARCH_TOOL,
         READ_URL_TOOL,
         ...controlToolsForPlatform(),
@@ -186,6 +196,9 @@ export function createAgentExecutor(
       // 本地 CV 与本机算力相关、与模型无关，因此恒定挂出：OCR 只回文本，检测的文本结果同样可用
       availableTools.push(...CV_TOOLS);
       if (workspacePath) availableTools.push(...WORKSPACE_TOOLS);
+      availableTools.push(...TASK_TOOLS);
+      if (isDesktopRuntime() && cachePath) availableTools.push(LIVE_BROWSER_TOOL);
+      if (project && project.folders?.length) availableTools.push(SELECT_WORKSPACE_TOOL);
       // 本地知识库是只读能力：桌面运行且有缓存目录时挂载，工具内部再检查模型和索引状态。
       if (cachePath && isDesktopRuntime()) availableTools.push(KNOWLEDGE_SEARCH_TOOL);
       if (askUserAllowed) availableTools.unshift(ASK_USER_TOOL);
@@ -199,6 +212,9 @@ export function createAgentExecutor(
       const enabledTools = filterDisabledTools(store, availableTools);
       // 工具集收口：绑定 Agent 且声明了白名单时收敛工具表；空声明或未绑定则保持全量
       const toolFilter = resolveToolFilter(agent?.tools);
+      if (taskState(taskKey(cachePath, threadId)).mode === "plan") {
+        for (let i = availableTools.length - 1; i >= 0; i--) if (!PLAN_READ_TOOLS.has(availableTools[i].function.name)) availableTools.splice(i, 1);
+      }
       const tools = toolFilter
         ? enabledTools.filter((tool) => toolFilter(tool.function.name))
         : enabledTools;
@@ -228,7 +244,9 @@ export function createAgentExecutor(
         roundTools.length > 0 ? buildMountedToolsHint(roundTools) : "本轮没有可调用的工具，请根据已有信息给出结论，不要发起工具调用。",
         buildAskUserHint(mountedNames.has(ASK_USER_TOOL_NAME)),
         mountedAny([WRITE_FILE_TOOL]) ? buildWriteFileHint() : "",
+        mountedAny([VIDEO_TOOL]) ? "用户要求生成短片时调用 generate_video，附一张图时自动使用其作为首帧。本轮图片 ID：" + JSON.stringify(attachments.filter((a) => a.kind === "image").map(({ id, name }) => ({ id, name }))) : "",
         mountedAny([IMAGE_GEN_TOOL]) ? buildImageGenHint() : "",
+        mountedAny([TRANSCRIBE_AUDIO_TOOL]) ? "提取本地音视频的语音文字时使用 transcribe_audio，传文件路径，无需把二进制读入对话。失败后同路径重试可继续已保存进度，offset 可分页读取全文。" : "",
         mountedAny([WEB_SEARCH_TOOL]) ? buildWebSearchHint() : "",
         mountedAny([KNOWLEDGE_SEARCH_TOOL]) ? buildKnowledgeSearchHint() : "",
         mountedAny([READ_URL_TOOL]) ? buildReadUrlHint() : "",
@@ -258,7 +276,8 @@ export function createAgentExecutor(
       // 网关只接受「单条 system 且位于最前」：两段以上 role: "system" 会直接 400
       // （System message must be at the beginning.）。因此这里先收集各段文本，
       // 用空行分隔后合并成唯一一条 system，而不是逐段 push 成多条。
-      const systemParts: string[] = [];
+      const systemParts: string[] = [taskInstruction(taskKey(cachePath, threadId)), memoryContext(cachePath, threadId, project?.id ?? "")];
+      if (project?.folders?.length) systemParts.push(`项目授权目录：${JSON.stringify([project.path, ...project.folders])}。当前目录：${workspacePath}。用 select_workspace 切换后续文件操作的根目录，每个目录的规则和沙箱独立生效。`);
       // 项目规则（AGENTS.md）由客户端自动发现，放在最前面，作为本工作区的最高层约定
       const rulesMessage = await buildProjectRulesMessage(workspacePath);
       if (rulesMessage) systemParts.push(rulesMessage);
@@ -311,6 +330,8 @@ export function createAgentExecutor(
         effectivePrompt,
         attachments,
         coveredCount,
+        visionEnabled,
+        (id) => videoHistoryResult(store, id),
       );
       let summaryText = coveredCount > 0 ? (thread?.contextSummary ?? "").trim() : "";
       // 网关只接受单条 system：摘要按 persona 后的下标插进 systemParts，合并成唯一一条
@@ -401,6 +422,29 @@ export function createAgentExecutor(
         if (controller.signal.aborted) return { outcome: "aborted", reason: "userInterrupted", message: "" };
         return fail(`消息尚未保存，已暂停请求模型：${error instanceof Error ? error.message : String(error)}。请先重试保存。`);
       }
+      if (/^\/video(?:\s|$)/.test(prompt.trim())) {
+        if (!tools.some((tool) => tool.function.name === VIDEO_TOOL_NAME)) {
+          return fail("视频生成未启用。请在桌面设置中选择视频生成模型，并检查工具页与当前 Agent 的工具权限。");
+        }
+        const call: ToolCall = { id: nextId("video-call"), type: "function",
+          function: { name: VIDEO_TOOL_NAME, arguments: JSON.stringify({ prompt: prompt.trim().slice(6).trim() }) } };
+        const submit = generateVideo(call, { threadId, messageId, attachments, artifactDir, cachePath, push, patch, nextId, controller });
+        const trace = observeTrace(runTrace);
+        const data = { toolCallId: call.id, toolName: VIDEO_TOOL_NAME };
+        trace({ kind: "event", name: "tool_start", data });
+        try {
+          const result = await awaitWithAbort(submit, controller.signal);
+          trace({ kind: "event", name: result.ok ? "tool_success" : "tool_error", data });
+          const reason = result.ok ? "completed" : "error";
+          finish(threadId, prompt, "done", reason);
+          return { outcome: result.ok ? "success" : "failed", reason, message: result.output };
+        } catch (error) {
+          if (!controller.signal.aborted) throw error;
+          trace({ kind: "event", name: "tool_skipped", data: { ...data, reason: "停止等待提交" } });
+          finish(threadId, prompt, "aborted", "userInterrupted");
+          return { outcome: "aborted", reason: "userInterrupted", message: "" };
+        }
+      }
       if (!config) {
         // 取不到连接信息的原因分两种，指向的修法完全不同：
         // 远程要在设置页重新拉取，本地要修缓存目录下的 models.json
@@ -451,6 +495,8 @@ export function createAgentExecutor(
                 effectivePrompt,
                 attachments,
                 nextCovered,
+                visionEnabled,
+                (id) => videoHistoryResult(store, id),
               );
               history = rebuilt.history;
               boundaries = rebuilt.boundaries;
@@ -559,7 +605,7 @@ export function createAgentExecutor(
         const state = { producedAny, askPending };
         const result = await runToolCall(call, {
           controller, valid, push, state, canSpawnSubagent, threadId, threadProjectId, thread, execute,
-          patch, mcpBindings, cachePath, skillToolScope, artifactDir, config, store,
+          messageId, attachments, patch, mcpBindings, cachePath, skillToolScope, artifactDir, config, store,
           approvalHost, workspacePath, renderedCheckpoints, sshHosts, pendingImages, runId, model,
           nextId,
         });

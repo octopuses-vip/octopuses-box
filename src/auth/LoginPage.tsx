@@ -5,6 +5,7 @@ import { useAppStore } from "../app/state";
 import { logCacheEvent } from "../cache/logger";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { ServerSetupPage } from "./ServerSetupPage";
 
 /**
  * 登录页：账号密码登录，成功后按配置状态进入缓存路径配置或主界面。
@@ -26,6 +27,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   /** 正在提交，期间禁止重复点击 */
   const [busy, setBusy] = useState(false);
+  const [editingEndpoint, setEditingEndpoint] = useState(false);
 
   const canSubmit = username.trim().length > 0 && password.length > 0 && !busy;
   /** 本地错误优先，其次展示后台判定失效的原因 */
@@ -48,6 +50,10 @@ export function LoginPage() {
     setError(result.error ?? "登录失败，请稍后重试。");
     logCacheEvent("auth.login.failed", username.trim());
   };
+
+  if (editingEndpoint) {
+    return <ServerSetupPage onConfigured={() => { setError(null); setEditingEndpoint(false); }} onCancel={() => setEditingEndpoint(false)} />;
+  }
 
   return (
     <div className="login">
@@ -99,6 +105,9 @@ export function LoginPage() {
           <div className="login__actions">
             <Button variant="primary" type="submit" disabled={!canSubmit}>
               {busy ? "登录中…" : "登录"}
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={() => setEditingEndpoint(true)}>
+              修改管理端地址
             </Button>
           </div>
         </form>

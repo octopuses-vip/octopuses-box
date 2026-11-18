@@ -1,3 +1,5 @@
+import { useBrowserAnnotations } from "../workflows/useBrowserAnnotations";
+import { WorkflowDialog } from "../workflows/WorkflowDialog";
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 
@@ -8,7 +10,9 @@ import { useAppStore } from "../app/state";
 import { APP_NAME } from "../app/meta";
 import { resolvePlatform, shortcutHint } from "../app/platform";
 import type { NavKey } from "../app/types";
+import { GoalWorker } from "../tasks/GoalWorker";
 import { AutomationScheduler } from "../automations/AutomationScheduler";
+import { useVideoWorker } from "../video/useVideoWorker";
 import { useCacheSync } from "../cache/useCacheSync";
 import { useKnowledgeSync } from "../knowledge/useKnowledgeSync";
 import { IconButton } from "../components/Button";
@@ -133,6 +137,7 @@ function NoticeToast() {
  * 让「应用起来要准备什么」有一个明确且唯一的入口。
  */
 export function AppShell() {
+  useBrowserAnnotations();
   const view = useAppStore((state) => state.view);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
   const rightPanelOpen = useAppStore((state) => state.rightPanelOpen);
@@ -157,6 +162,7 @@ export function AppShell() {
 
   // 主界面挂载期间把会话记录与产物同步到缓存路径
   useCacheSync();
+  useVideoWorker();
   useKnowledgeSync();
 
   // 拖放统一路由：图纸导入工作目录、其余文件转交输入框当附件（幂等，只装一次监听）
@@ -410,7 +416,9 @@ export function AppShell() {
       <UpdateNotice />
       <NoticeToast />
       <ProjectDialog />
+      <WorkflowDialog />
       <AutomationScheduler />
+      <GoalWorker />
     </div>
   );
 }

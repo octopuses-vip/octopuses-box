@@ -1,0 +1,52 @@
+/* Conversation-native plans, composer modes and durable task status. */
+.plan-card { border: 1px solid var(--border); border-radius: 12px; margin: 6px 0 12px; background: var(--bg-0); overflow: hidden; }
+.plan-card > summary { display: flex; gap: 9px; align-items: center; padding: 12px 15px; cursor: pointer; list-style: none; color: var(--text-2); font-size: 13px; }
+.plan-card > summary::-webkit-details-marker { display: none; }
+.plan-card > summary > span:first-of-type { color: var(--text-1); font-weight: var(--fw-ui); }
+.plan-card__count { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 12px; }
+.plan-card ol { list-style: none; padding: 0 15px 12px; margin: 0; display: grid; gap: 1px; }
+.plan-step { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; color: var(--text-3); font-size: 13px; line-height: 1.6; }
+.plan-step__mark { display: grid; place-items: center; width: 17px; height: 20px; flex: 0 0 auto; }
+.plan-step__number { font-size: 11px; font-variant-numeric: tabular-nums; }
+.plan-step--completed { color: var(--text-2); }
+.plan-step--completed .plan-step__mark { color: var(--success); }
+.plan-step--in_progress { color: var(--text-1); }
+.plan-step__label { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--text-3); padding-top: 2px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); display: inline-block; flex: 0 0 auto; }
+.status-dot--active { background: var(--success); }
+.plan-step--in_progress .status-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 9%, transparent); }
+.task-status { position: relative; flex-shrink: 0; width: min(calc(100% - 64px), var(--composer-max-width)); margin: 0 auto; font-size: 12px; }
+.goal-strip, .plan-ready { display: flex; align-items: center; gap: 8px; min-height: 36px; color: var(--text-2); border-bottom: 1px solid var(--border); }
+.goal-strip__title { display: flex; gap: 8px; align-items: center; min-width: 0; text-align: left; flex: 1; }
+.goal-strip__title > span { flex: 0 0 auto; color: var(--text-3); font-size: 11px; }
+.goal-strip__title strong { font-weight: var(--fw-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-strip__budget { font-size: 11px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.goal-strip--complete > svg { color: var(--success); }
+.goal-strip .icon-btn { width: 25px; height: 25px; }
+.plan-ready > span { flex: 1; }
+.recovery-strip { color: var(--text-2); border-bottom: 1px solid var(--border); }
+.recovery-strip > summary { min-height: 36px; display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.recovery-strip > summary::-webkit-details-marker { display: none; }
+.recovery-strip__list { max-height: 220px; overflow: auto; padding: 8px; background: var(--bg-1); }
+.recovery-strip__list p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 10px; }
+.goal-editor { position: absolute; z-index: 70; bottom: calc(100% + 8px); right: 0; width: min(420px, 100%); background: var(--bg-1); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-menu); padding: 16px; }
+.goal-editor > header, .goal-editor > footer { display: flex; align-items: center; gap: 8px; }
+.goal-editor > header { justify-content: space-between; font-size: 14px; }
+.goal-editor > p { margin: 5px 0 12px; color: var(--text-3); }
+.goal-editor textarea { resize: vertical; font-size: 13px; line-height: 1.7; }
+.goal-editor__budget { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 0; color: var(--text-2); }
+.goal-editor__budget label { display: flex; align-items: center; gap: 8px; }
+.goal-editor__budget input { width: 58px; border: 1px solid var(--border); background: var(--bg-input); border-radius: 6px; padding: 4px; }
+.goal-editor__budget > span { font-size: 11px; color: var(--text-3); }
+.mode-picker { position: relative; flex-shrink: 0; }
+.composer-mode { height: 28px; display: flex; align-items: center; gap: 5px; padding: 0 7px; border-radius: 6px; color: var(--text-2); font-size: 12px; font-weight: var(--fw-ui); white-space: nowrap; }
+.composer-mode:hover, .composer-mode.is-active { background: var(--bg-hover); color: var(--text-1); }
+.mode-picker__menu { position: absolute; z-index: 80; bottom: calc(100% + 10px); left: 0; width: 278px; max-width: calc(100vw - 40px); padding: 5px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-1); box-shadow: var(--shadow-menu); }
+.mode-picker__menu > button { display: flex; gap: 10px; align-items: center; padding: 10px; width: 100%; border-radius: 8px; text-align: left; }
+.mode-picker__menu > button:hover { background: var(--bg-hover); }
+.mode-picker__menu > button > span { flex: 1; display: grid; gap: 3px; }
+.mode-picker__menu strong { font-size: 13px; font-weight: var(--fw-ui); }
+.mode-picker__menu small { font-size: 11px; color: var(--text-3); }
+.menu-divider { height: 1px; margin: 4px 6px; background: var(--border); }
+@container main (max-width: 720px) { .task-status { width: calc(100% - 32px); } }
+@container main (max-width: 460px) { .composer-mode > span { display: none; } .goal-strip__title > span { display: none; } .goal-editor__budget > span { display: none; } }

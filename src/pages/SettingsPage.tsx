@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ComputerSettings } from "../computer/ComputerSettings";
+import { WorkflowPreferences } from "../workflows/WorkflowPreferences";
 
 import { clearCache, initCacheDir, readCacheInfo, type CacheInfo } from "../app/desktop/cache";
 import { parseApiError, probeEndpoint } from "../app/desktop/server";
@@ -46,6 +47,7 @@ const SETTINGS_CATEGORIES = [
   { id: "models", label: "模型与连接", description: "管理模型来源、连接地址和默认模型。" },
   { id: "permissions", label: "权限与安全", description: "设置命令审批、沙箱与自动批准规则。" },
   { id: "runtime", label: "运行与上下文", description: "调整运行上限、上下文压缩和后台定时。" },
+  { id: "workspace", label: "工作区扩展", description: "管理记忆、插件、浏览器与独立后台任务。" },
   { id: "storage", label: "存储与缓存", description: "查看本地存储用量，管理缓存目录与临时文件。" },
   { id: "advanced", label: "高级与调试", description: "查看模型调用记录等调试信息。" },
   { id: "about", label: "账号与关于", description: "查看账号信息与应用版本。" },
@@ -70,6 +72,10 @@ export function SettingsPage() {
   useAppStore((state) => state.platform);
   const { themeId, schemePreference, resolvedScheme, setThemeId, setSchemePreference } = useTheme();
   const model = useAppStore((state) => state.model);
+  const videoModelCode = useAppStore((state) => state.videoModelCode);
+  const setVideoModelCode = useAppStore((state) => state.setVideoModelCode);
+  const audioModelCode = useAppStore((state) => state.audioModelCode);
+  const setAudioModelCode = useAppStore((state) => state.setAudioModelCode);
   const modelOptions = useAppStore((state) => state.modelOptions);
   const modelConfigStatus = useAppStore((state) => state.modelConfigStatus);
   const modelConfigError = useAppStore((state) => state.modelConfigError);
@@ -352,6 +358,7 @@ export function SettingsPage() {
           role="tabpanel"
           aria-label={currentCategory.label}
         >
+        <SettingsGroup category="workspace" active={category}><WorkflowPreferences /></SettingsGroup>
         <SettingsGroup category="appearance" active={category}>
 
         <div className="page__section">
@@ -578,6 +585,27 @@ export function SettingsPage() {
               {supportsImages ? "已开启" : "已关闭"}
             </button>
           </div>
+          <label className="list-row">
+            <span className="list-row__main">
+              <span className="list-row__title">视频生成模型</span>
+              <span className="list-row__desc">选择已开通视频生成的模型或推理接入点。可在聊天中输入 /video 并附一张首帧图片。</span>
+            </span>
+            <select aria-label="视频生成模型" value={videoModelCode} onChange={(event) => setVideoModelCode(event.target.value)}>
+              <option value="">未配置</option>
+              {remoteModels.map((item) => <option key={item.code} value={item.code}>{item.name || item.code}</option>)}
+            </select>
+          </label>
+          <label className="list-row">
+            <span className="list-row__main">
+              <span className="list-row__title">音频转文字模型</span>
+              <span className="list-row__desc">选择支持语音识别的模型。输入区的「音频转文字」可上传录音，音频附件也会自动转成文字。</span>
+            </span>
+            <select aria-label="音频转文字模型" value={audioModelCode} onChange={(event) => setAudioModelCode(event.target.value)}>
+              <option value="">未配置</option>
+              {audioModelCode && !remoteModels.some((item) => item.code === audioModelCode) ? <option value={audioModelCode}>原模型已不可用，请重新选择</option> : null}
+              {remoteModels.map((item) => <option key={item.code} value={item.code}>{item.name || item.code}</option>)}
+            </select>
+          </label>
           {/* 常驻显示：后台随时可能新增或下架模型，本地文件也可能被外部编辑器改过，
               用户需要能主动重新拉一次列表 */}
           <div className="login__actions" style={{ marginTop: 8 }}>
@@ -626,7 +654,7 @@ export function SettingsPage() {
             <>
               <div className="list-row">
                 <span className="list-row__main">
-                  <span className="list-row__title">内核级沙箱（macOS Seatbelt）</span>
+                  <span className="list-row__title">命令隔离（Seatbelt / bubblewrap / Docker）</span>
                   <span className="list-row__desc">
                     开启后模型触发的命令由系统内核强制限制写入范围：只允许写当前项目目录与工具链缓存，
                     越界写入会被拦下并回填可读原因。系统未提供 sandbox-exec 时自动降级为不限制。

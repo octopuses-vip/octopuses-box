@@ -1,6 +1,6 @@
 /**
  * `generate_image` 工具：调用网关的 `/images/generations` 生成图片，落盘到当前会话的产物目录
- * （项目会话在项目根下的 `output/`，临时会话在缓存区的 `outputs/<日期>/`），右栏「图片」tab 随即可以预览。
+ * （项目会话在项目根下的 `output/`，临时会话在缓存区的 `outputs/<日期>/`），右栏「媒体」tab 随即可以预览。
  *
  * 走「探测 + 降级」：先看 `/models` 有没有图像模型、再退回空体 POST 探一次路由，结果缓存 24h；
  * 网关没有渠道时返回**可读的不可用提示**而不是静默失败，渠道开通后无需改代码即生效。
@@ -282,7 +282,7 @@ export async function runGenerateImageTool(
     const bytes = await writeArtifactBytes(artifactDir, fileName, generated.base64);
     return {
       ok: true,
-      output: `已生成 ${fileName}（${bytes} 字节），用户可在右侧面板「图片」中查看。`,
+      output: `已生成 ${fileName}（${bytes} 字节），用户可在右侧面板「媒体」中查看。`,
       name: fileName,
     };
   } catch (error) {

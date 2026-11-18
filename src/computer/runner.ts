@@ -28,7 +28,7 @@ export async function runComputerAssistant(args: { goal: string; app: string }, 
   if (!allowed.includes(args.app)) {
     // 报错要能直接照着做：说清是哪个应用、去哪里加，而不是只说「不在允许列表」
     throw new Error(
-      `应用 ${args.app} 不在电脑操作允许列表中，本次操作未执行。请到「设置 → 运行 → 电脑操作助手 → 允许操作的应用 bundle ID」添加该应用后重试。`,
+      `应用 ${args.app} 不在电脑操作允许列表中，本次操作未执行。请到「设置 → 运行 → 电脑操作助手 → 允许操作的应用标识」添加该应用后重试。`,
     );
   }
   const state = useAppStore.getState();

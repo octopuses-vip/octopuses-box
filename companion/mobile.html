@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>octopuses 远程工作台</title><link rel="stylesheet" href="/mobile.css"></head><body>
+<main><h1>octopuses 远程工作台</h1><p id="status">输入桌面端生成的配对码</p>
+<form id="pair"><input id="code" placeholder="一次性配对码" autocomplete="off" required><button>配对</button></form>
+<section id="controls" hidden><button id="logout">断开此浏览器</button><h2>新建后台任务</h2><form id="create"><select id="project" aria-label="项目"></select><textarea id="prompt" placeholder="任务目标和验收条件" required></textarea><label><input id="container" type="checkbox">在本地 Docker 环境隔离执行</label><label><input id="network" type="checkbox">允许任务命令联网</label><button>启动任务</button></form><h2>任务与审批</h2><div id="jobs"></div></section>
+</main><script type="module" src="/mobile.js"></script></body></html>

@@ -29,7 +29,7 @@ pub struct SandboxOptions {
 
 /// 沙箱是否可用：仅 macOS、`sandbox-exec` 存在且探针能跑通
 pub fn is_available() -> bool {
-    *AVAILABLE.get_or_init(|| cfg!(target_os = "macos") && probe_exec(Path::new(SANDBOX_EXEC)))
+    *AVAILABLE.get_or_init(|| if cfg!(target_os = "macos") { probe_exec(Path::new(SANDBOX_EXEC)) } else { crate::sandbox_cross::available() })
 }
 
 /// 探针：用一条空 profile 跑 `/usr/bin/true`，返回是否成功。
@@ -61,6 +61,7 @@ pub fn wrap_shell_command(
     if !options.enabled || !is_available() {
         return None;
     }
+    if !cfg!(target_os = "macos") { return crate::sandbox_cross::wrap(command, workspace, options.allow_network); }
     Some((
         SANDBOX_EXEC.to_string(),
         vec![

@@ -30,21 +30,21 @@ const MIN_INTERVAL_SECONDS: u64 = 60;
 #[serde(rename_all = "camelCase")]
 pub struct AgentSpec {
     /// 任务 id，与前端 `Automation.id` 一致
-    id: String,
+    pub(crate) id: String,
     /// 固定间隔（秒）；与 `calendar` 二选一，都没有则不注册
-    interval_seconds: Option<u64>,
+    pub(crate) interval_seconds: Option<u64>,
     /// 日历式触发；与 `interval_seconds` 二选一
-    calendar: Option<CalendarSpec>,
+    pub(crate) calendar: Option<CalendarSpec>,
 }
 
 /// 日历式触发规格（`StartCalendarInterval`）；字段为 `None` 表示该维度不限制
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CalendarSpec {
-    minute: Option<u32>,
-    hour: Option<u32>,
-    weekday: Option<u32>,
-    day: Option<u32>,
+    pub(crate) minute: Option<u32>,
+    pub(crate) hour: Option<u32>,
+    pub(crate) weekday: Option<u32>,
+    pub(crate) day: Option<u32>,
 }
 
 /// 已注册的后台定时项信息
@@ -204,9 +204,6 @@ fn parse_program_arguments(body: &str) -> Vec<String> {
 ///
 /// 只有 macOS 会把任务注册成系统级定时项，因此其它平台不可能带该参数，直接返回 `None`。
 pub fn wake_task_id() -> Option<String> {
-    if !cfg!(target_os = "macos") {
-        return None;
-    }
     wake_from_args(std::env::args().skip(1))
 }
 
@@ -333,7 +330,7 @@ fn list_installed() -> Result<Vec<AgentInfo>, String> {
 #[tauri::command]
 pub fn launch_agent_install(specs: Vec<AgentSpec>) -> Result<Vec<AgentInfo>, String> {
     if !cfg!(target_os = "macos") {
-        return Ok(Vec::new());
+        return crate::background_cross::install(specs);
     }
     let exe = current_exe()?;
     let dir = launch_agents_dir()?;
@@ -365,7 +362,7 @@ pub fn launch_agent_install(specs: Vec<AgentSpec>) -> Result<Vec<AgentInfo>, Str
 #[tauri::command]
 pub fn launch_agent_uninstall(task_id: String) -> Result<(), String> {
     if !cfg!(target_os = "macos") {
-        return Ok(());
+        return crate::background_cross::uninstall(&task_id);
     }
     let dir = launch_agents_dir()?;
     let label = label_for(&task_id);
@@ -383,7 +380,7 @@ pub fn launch_agent_uninstall(task_id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn launch_agent_status() -> Result<Vec<AgentInfo>, String> {
     if !cfg!(target_os = "macos") {
-        return Ok(Vec::new());
+        return crate::background_cross::status();
     }
     list_installed()
 }
@@ -394,7 +391,7 @@ pub fn launch_agent_status() -> Result<Vec<AgentInfo>, String> {
 #[tauri::command]
 pub fn launch_agent_prune(active_ids: Vec<String>) -> Result<Vec<String>, String> {
     if !cfg!(target_os = "macos") {
-        return Ok(Vec::new());
+        return crate::background_cross::prune(&active_ids);
     }
     let uid = current_uid()?;
     let mut removed = Vec::new();
@@ -414,9 +411,7 @@ pub fn launch_agent_prune(active_ids: Vec<String>) -> Result<Vec<String>, String
 /// 应用被移动或升级后 `current_exe()` 会变，旧 plist 里的路径已失效。这里只做清理，
 /// 重建交给前端——前端加载任务后会带着当前路径重新 `install`（幂等）。
 pub fn prune_stale_agents() {
-    if !cfg!(target_os = "macos") {
-        return;
-    }
+    if !cfg!(target_os = "macos") { crate::background_cross::prune_stale(); return; }
     let Ok(exe) = current_exe() else {
         return;
     };

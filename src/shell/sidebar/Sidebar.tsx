@@ -1,3 +1,4 @@
+import { useWorkflowUI } from "../../workflows/store";
 import { useEffect, useState } from "react";
 
 import { useAppStore } from "../../app/state";
@@ -130,6 +131,8 @@ export function Sidebar() {
           >
             <Icon name="search" size={16} />
           </button>
+          <button className="sidebar__rail-item" aria-label="后台任务" title="后台任务" data-tooltip="后台任务" onClick={() => useWorkflowUI.getState().open("connections")}><Icon name="clock" size={16} /></button>
+          <button className="sidebar__rail-item" aria-label="插件与连接" title="插件与连接" data-tooltip="插件与连接" onClick={() => useWorkflowUI.getState().open("plugins")}><Icon name="puzzle" size={16} /></button>
           {NAV_ITEMS.map((item) => (
             <button
               type="button"

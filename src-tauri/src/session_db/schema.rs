@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS conversation (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS video_job (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES conversation(id) ON DELETE CASCADE,
+  payload TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS message (
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL REFERENCES conversation(id) ON DELETE CASCADE,

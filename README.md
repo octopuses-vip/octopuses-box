@@ -110,7 +110,10 @@ octopuses 面向需要统一管理大模型接入的组织与个人。它把「�
 - **产物落盘**：模型通过 `write_artifact` 写入产物目录，右栏「文件」tab 列出全部产物，「网页」tab 用沙箱 iframe 渲染 HTML。
 - **多模态预览**：文本 / 图片 / PDF / 二进制按类型分别预览；Markdown 与 CSV 直接富预览，PDF 交给 WebView 内置阅读器。
 - **图像生成**：`generate_image` 调用网关 `/images/generations` 出图并落盘；网关无图像渠道时返回可读的不可用提示。
-- **右栏按内容出现**：只显示当前有内容的 tab（文件 / 网页 / 图片 / 差异 / 来源 / 评审），全为空时自动收起。
+- **音视频转文字**：在「设置 → 模型与连接 → 音频转文字模型」选择支持语音识别的模型。输入区音频图标可选择文件、编辑结果后插入输入框；添加、粘贴或拖入音视频也会自动生成文本附件。桌面端直接按文件路径读取音轨，不设置原文件大小或时长门槛；本地解码后按安静位置优先切成每段不超过 20 MB、最长 5 分钟的独立 WAV，逐段上传所选语音服务并合并全文，无需安装 ffmpeg。支持 MP3、WAV、M4A/AAC、ALAC、FLAC、OGG/Vorbis，以及 MP4、WebM 中解码器支持的音轨；不支持的编码会明确提示。临时音轨在完成、失败或取消后清理，已完成段落的文字保存在缓存目录 `temp/audio-transcriptions/`，同一文件、模型和账号下重试或重启可继续进度；源文件修改后重新识别。清理临时缓存会删除恢复记录。Agent 可经既有审批链路调用 `transcribe_audio`，传入本地绝对路径或项目相对路径，完整文字写入会话产物目录，长结果通过 `offset` 分页读取。模型看到文字，原始音视频留在本机。转写服务使用 `/audio/transcriptions`，本地模式可在 `models.json` 中添加服务提供的语音识别模型条目；接口见 [OpenAI 官方音频转写文档](https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create)。
+- **视频生成**：在设置的「视频生成模型」中选择已授权的视频模型或推理接入点。支持 Seedance 原生任务接口（例如方舟的 `https://ark.cn-beijing.volces.com/api/v3`）和 `/predictions` 统一视频接口（兼容网关通常使用 `/v1` 基础地址）。原生路径明确不存在时，客户端按统一视频格式提交，任务记录保存实际接口以便重启恢复；网关的业务错误会直接显示。本地模式可将视频模型作为独立条目加入缓存目录的 `models.json`。保留日常聊天模型作为默认模型。
+  在聊天中输入 `/video 海边日出，镜头缓慢向前移动` 直接生成短片，或用自然语言让 Agent 调用 `generate_video`。需要图生视频时附上一张 JPEG、PNG 或 WebP 首帧（上限 10 MB）。任务卡显示进度，重启后按原任务 ID 恢复查询；下载中断可在卡片上继续原任务。成功的视频保存到会话产物目录，可在右栏「媒体」播放、另存为。[Seedance 视频任务接口示例](https://docs.byteplus.com/en/docs/ModelArk/seedance-2-5)
+- **右栏按内容出现**：只显示当前有内容的 tab（文件 / 网页 / 媒体 / 差异 / 来源 / 评审），全为空时自动收起。
 
 ---
 
@@ -206,7 +209,7 @@ octopuses/
 
 | 依赖 | 说明 |
 | --- | --- |
-| Node.js ≥ 20 + pnpm | 前端构建与包管理 |
+| Node.js ≥ 22 + pnpm | 前端构建、包管理与配套服务运行时打包 |
 | Rust 稳定版 | `cargo` 需在 `PATH` 中（非交互 shell 记得 `export PATH="$HOME/.cargo/bin:$PATH"`） |
 | 平台系统依赖 | macOS：Xcode Command Line Tools；Windows：WebView2 + MSVC 生成工具；Linux：见下 |
 
@@ -278,7 +281,7 @@ pnpm tauri build --bundles app  # 仅打包 macOS .app
 3. 设置缓存目录。
 4. 在会话输入区选择当前账号已授权且已启用的模型。
 
-更换管理端地址后需要重新登录，因为登录凭据由原管理端签发。
+未注明协议时，本机和内网 IP 默认使用 HTTP，公网主机默认使用 HTTPS；已配置 HTTPS 的内网服务可显式填写 `https://` 前缀。登录页可以直接点击「修改管理端地址」。更换管理端地址后需要重新登录，因为登录凭据由原管理端签发。
 
 管理端服务端的源码与部署说明见 [octopuses-server](https://github.com/octopuses-vip/octopuses-server)。
 
@@ -369,10 +372,20 @@ minisign -S -s octopuses.key -m <安装包路径>
 | `browser_cdp`（DevTools 协议驱动受控浏览器） | ✅ | ✅ | ✅ |
 | `open_in_browser`（系统默认浏览器打开链接） | ✅ | ✅ | ✅ |
 | `browser_script` / `computer_script`（AppleScript） | ✅ | — | — |
-| `screenshot` / `computer_click`（截屏 + 坐标点击） | ✅ | — | — |
-| 内核级写隔离沙箱（Seatbelt） | ✅ | — | — |
-| 系统级后台定时（应用关闭后仍唤起） | ✅ | — | — |
+| `screenshot` / `computer_click`（截屏 + 坐标点击） | ✅ | PowerShell / Win32 | X11；Wayland 仅截图 |
+| 命令写隔离 | Seatbelt | Docker Linux 容器 | bubblewrap |
+| 系统级后台定时（应用关闭后仍唤起） | launchd | Task Scheduler | systemd 用户定时器 |
 | 窗口装饰 | 原生 Overlay | 无边框 + 自绘 | 无边框 + 自绘 |
+
+---
+
+## 会话工作流与本地后台服务
+
+客户端增加计划与持续目标、任务恢复、PR/CI、Worktree 交接、长期记忆、麦克风听写、浏览器标签页连接、插件与远程 MCP OAuth、多目录项目和 Office 批注编辑。前端以会话为主，计划内嵌，检查与预览按需展开右栏；默认石墨主题采用中性灰阶。
+
+安装包附带独立后台服务及 Node.js 运行时，可创建退出客户端后继续执行的任务，通过配对手机或远程客户端检查进度并批准操作。容器任务需本机 Docker，Office 版式预览需 LibreOffice；GitHub、OAuth 和浏览器扩展需各自完成配置。Windows/Linux 适配尚未完成端到端实机验收。本次不包含托管云平台或公网部署。
+
+入口、启动方式、功能边界和验证记录见 [工作流使用说明](docs/codex-parity.md)。
 
 ---
 

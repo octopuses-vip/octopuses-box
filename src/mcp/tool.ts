@@ -24,7 +24,12 @@ function sanitize(raw: string): string {
 
 /** 模型侧工具名：`mcp_<服务id>__<工具名>` */
 export function mcpToolName(server: McpServer, tool: McpTool): string {
-  return `${TOOL_PREFIX}${sanitize(server.id)}${SEPARATOR}${sanitize(tool.name)}`;
+  const legacy = `${TOOL_PREFIX}${sanitize(server.id)}${SEPARATOR}${sanitize(tool.name)}`;
+  if (legacy.length <= 64) return legacy;
+  // Compatible APIs cap function names at 64 characters; keep common existing names stable.
+  let hash = 14695981039346656037n;
+  for (const byte of new TextEncoder().encode(JSON.stringify([server.id, tool.name]))) hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * 1099511628211n);
+  return `mcp_${sanitize(server.id).slice(0, 12)}__${sanitize(tool.name).slice(0, 22)}_${hash.toString(16).padStart(16, "0")}`;
 }
 
 /** 一条可调用的 MCP 工具绑定：模型工具名 ↔ 服务与本名 */
@@ -65,7 +70,9 @@ export function buildMcpBindings(
   for (const server of servers) {
     if (!server.enabled) continue;
     for (const tool of toolsByServer[server.id] ?? []) {
-      bindings.push({ server, tool, chatTool: toMcpTool(server, tool) });
+      const chatTool = toMcpTool(server, tool);
+      if (bindings.some((b) => b.chatTool.function.name === chatTool.function.name)) throw new Error(`MCP 工具名冲突：${server.name} / ${tool.name}，请为服务设置不同的 ID。`);
+      bindings.push({ server, tool, chatTool });
     }
   }
   return bindings;

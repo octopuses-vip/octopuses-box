@@ -40,6 +40,7 @@ pub fn artifact_kind(name: &str) -> &'static str {
         .unwrap_or_default();
     match extension.as_str() {
         "png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "svg" | "ico" => "image",
+        "mp4" => "video",
         "pdf" => "pdf",
         "html" | "htm" | "css" | "js" | "mjs" | "ts" | "tsx" | "jsx" | "json" | "md" | "txt"
         | "csv" | "xml" | "yml" | "yaml" | "log" => "text",

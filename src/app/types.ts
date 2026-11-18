@@ -1,12 +1,14 @@
 /** 应用领域模型定义（纯界面层的展示数据） */
 
 export type ToolKind =
+  | "plan"
   | "exec_command"
   | "apply_patch"
   | "read_file"
   | "write_file"
   | "write_artifact"
   | "image_gen"
+  | "video_gen"
   | "search_code"
   | "test_runner"
   | "web_search"
@@ -128,6 +130,8 @@ export type StreamItem =
       arguments?: string;
       /** 工具结果的完整内容（`output` 只保留展示所需的一段） */
       result?: string;
+      videoJobId?: string;
+      plan?: { step: string; status: "pending" | "in_progress" | "completed" }[];
     }
   | {
       id: string;
@@ -165,6 +169,7 @@ export type StreamItem =
       id: string;
       type: "checkpoint";
       checkpointId: string;
+      workspacePath?: string;
       status: "ready" | "rollingBack" | "rolledBack" | "error";
       detail: string;
     }
@@ -343,6 +348,7 @@ export interface Thread {
 }
 
 export interface Project {
+  folders?: string[];
   id: string;
   name: string;
   path: string;
@@ -381,6 +387,7 @@ export interface Project {
  * 即该项目不使用对应类别的任何资源（见 `Project` 各字段的严格白名单语义）。
  */
 export interface ProjectInput {
+  folders?: string[];
   name: string;
   path: string;
   mcpIds?: string[];
@@ -395,7 +402,7 @@ export interface ProjectInput {
  * Review 仅在当前会话存在未解决评论时出现，「图片」仅在有图片产物时出现，
  * 「3D」仅在会话内有可预览的图纸（产物或 `imports/` 下的导入文件）时出现。
  */
-export type RightTab = "files" | "web" | "media" | "model" | "diff" | "review" | "sources";
+export type RightTab = "files" | "web" | "media" | "model" | "diff" | "review" | "sources" | "pulls" | "tasks" | "browser";
 
 export type NavKey =
   | "newchat"
@@ -456,7 +463,7 @@ export interface RemoteModel {
  * 环境变量 `OCTOPUSES_HOST` / `OCTOPUSES_PORT` 只在首次配置时作为表单预填值。
  */
 export interface Endpoint {
-  /** 主机：可带 https://，不含路径；远程主机默认 HTTPS，本机默认 HTTP */
+  /** 主机：可带 http(s)://，不含路径；内网默认 HTTP，公网默认 HTTPS */
   host: string;
   /** 端口：1-65535 的十进制数字串 */
   port: string;
@@ -805,7 +812,7 @@ export interface AgentItem {
  * 产物种类：文本走文本预览、图片走 blob 预览、PDF 走内置阅读器、二进制只展示元信息。
  * 由文件扩展名派生（后端 `artifact_kind`），两端口径一致。
  */
-export type ArtifactKind = "text" | "image" | "pdf" | "binary";
+export type ArtifactKind = "text" | "image" | "video" | "pdf" | "binary";
 
 /** 产物目录下的一个产物文件（项目会话在项目 `output/`，独立会话在缓存 `outputs/<日期>/`） */
 export interface ArtifactInfo {

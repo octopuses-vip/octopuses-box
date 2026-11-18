@@ -1,5 +1,6 @@
 import { Icon } from "../../components/Icon";
-import { Markdown } from "../Markdown";
+import { Markdown, MarkdownLinkScope } from "../Markdown";
+import { useAppStore } from "../../app/state";
 import { memo } from "react";
 
 interface AnswerTextProps {
@@ -14,6 +15,7 @@ interface AnswerTextProps {
  * 避免历史段落也一直闪。
  */
 export const AnswerText = memo(function AnswerText({ text, streaming }: AnswerTextProps) {
+  const openMarkdownLink = useAppStore((state) => state.openMarkdownLink);
   return (
     <div className="assistant__row">
       <div className="assistant__gutter">
@@ -21,7 +23,9 @@ export const AnswerText = memo(function AnswerText({ text, streaming }: AnswerTe
       </div>
       <div className="assistant__content">
         <div className={streaming ? "caret" : undefined}>
-          <Markdown text={text} />
+          <MarkdownLinkScope onLink={openMarkdownLink}>
+            <Markdown text={text} />
+          </MarkdownLinkScope>
         </div>
       </div>
     </div>

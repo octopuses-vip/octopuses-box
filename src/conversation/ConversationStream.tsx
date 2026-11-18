@@ -1,3 +1,4 @@
+import { PlanCard } from "../tasks/PlanCard";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { rollbackWorkspaceCheckpoint } from "../app/desktop/workspace";
@@ -20,6 +21,7 @@ import { NoticeCard } from "./blocks/NoticeCard";
 import { QuestionCard } from "./blocks/QuestionCard";
 import { ReasoningBlock } from "./blocks/ReasoningBlock";
 import { SourcesCard } from "./blocks/SourcesCard";
+import { VideoJobCard } from "../video/VideoJobCard";
 import { ToolCallCard } from "./blocks/ToolCallCard";
 import { UsageCard } from "./blocks/UsageCard";
 import { UserMessage } from "./blocks/UserMessage";
@@ -85,6 +87,8 @@ function renderItem(
     case "reasoning":
       return <ReasoningBlock key={item.id} text={item.text} done={item.done} />;
     case "tool_call":
+      if (item.kind === "plan" && item.plan?.length) return <PlanCard key={item.id} steps={item.plan} />;
+      if (item.kind === "video_gen") return <VideoJobCard key={item.id} item={item} />;
       return (
         <ToolCallCard
           key={item.id}
@@ -264,7 +268,9 @@ export function ConversationStreamBase({
 
 /** 函数级说明（开发者 Jan）：执行 handleRollback 的单一职责，并返回可供调用方继续处理的结果。 */
   const handleRollback = async (messageId: string, itemId: string, checkpointId: string) => {
-    if (!cachePath || !workspacePath) {
+    const checkpoint = messages.find((m) => m.id === messageId)?.items.find((i) => i.id === itemId);
+    const checkpointRoot = checkpoint?.type === "checkpoint" ? checkpoint.workspacePath ?? workspacePath : workspacePath;
+    if (!cachePath || !checkpointRoot) {
       patchItem(activeThreadId, messageId, itemId, (item) =>
         item.type === "checkpoint"
           ? { ...item, status: "error", detail: "缓存目录或项目目录不可用，无法回滚。" }
@@ -276,7 +282,7 @@ export function ConversationStreamBase({
       item.type === "checkpoint" ? { ...item, status: "rollingBack", detail: "正在恢复文件…" } : item,
     );
     try {
-      const result = await rollbackWorkspaceCheckpoint(cachePath, workspacePath, checkpointId);
+      const result = await rollbackWorkspaceCheckpoint(cachePath, checkpointRoot, checkpointId);
       patchItem(activeThreadId, messageId, itemId, (item) =>
         item.type === "checkpoint"
           ? { ...item, status: "rolledBack", detail: `已恢复 ${result.files.length} 个文件。` }
@@ -325,9 +331,8 @@ export function ConversationStreamBase({
             <div className="empty-state__mark" aria-hidden="true">
               <Icon name="sparkles" size={26} />
             </div>
-            <div className="empty-state__eyebrow">你的 AI 工作空间</div>
-            <div className="empty-state__title">今天想让 {APP_NAME} 做什么？</div>
-            <p className="empty-state__desc">从一个想法开始，让代码、文档与日常工作向前一步。</p>
+            <div className="empty-state__title">今天想做些什么？</div>
+            <p className="empty-state__desc">描述一个任务，或从下面的想法开始。</p>
             <div className="suggestion-grid">
               {NEW_CHAT_SUGGESTIONS.map((suggestion, index) => (
                 <button
@@ -374,7 +379,7 @@ export function ConversationStreamBase({
             ) : (
               <div className="msg" key={message.id} data-message-id={message.id}>
                 <div className="assistant">
-                  {message.items.map((item) =>
+                  {message.items.filter((item, itemIndex) => item.type !== "tool_call" || item.kind !== "plan" || !item.plan?.length || !message.items.slice(itemIndex + 1).some((later) => later.type === "tool_call" && later.kind === "plan" && later.plan?.length)).map((item) =>
                     renderItem(
                       item,
                       running,

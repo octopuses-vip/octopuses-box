@@ -10,11 +10,14 @@ export type IconName =
   | "message"
   | "settings"
   | "chevron-down"
+  | "chevron-left"
   | "chevron-right"
   | "panel-right"
   | "terminal"
   | "arrow-up"
   | "stop"
+  | "pause"
+  | "play"
   | "check"
   | "close"
   | "copy"
@@ -25,6 +28,9 @@ export type IconName =
   | "file"
   | "globe"
   | "image"
+  | "video"
+  | "mic"
+  | "audio"
   | "diff"
   | "book"
   | "clipboard-check"
@@ -50,6 +56,8 @@ export type IconName =
   | "ellipsis";
 
 const PATHS: Record<IconName, string> = {
+  pause: "M5.5 3.5v9M10.5 3.5v9",
+  play: "M5 3.5 12 8 5 12.5Z",
   plus: "M8 3.5v9M3.5 8h9",
   search: "M7.2 12.4a5.2 5.2 0 1 0 0-10.4 5.2 5.2 0 0 0 0 10.4ZM11.2 11.2 14 14",
   puzzle:
@@ -62,6 +70,7 @@ const PATHS: Record<IconName, string> = {
   settings:
     "M8 10.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4ZM12.6 9.7l1 .8-1 1.7-1.2-.3-.9.5-.3 1.2H8.6l-.3-1.2-.9-.5-1.2.3-1-1.7 1-.8v-1l-1-.8 1-1.7 1.2.3.9-.5.3-1.2h2.4l.3 1.2.9.5 1.2-.3 1 1.7-1 .8v1Z",
   "chevron-down": "M4.4 6.4 8 10l3.6-3.6",
+  "chevron-left": "M10 4L6 8l4 4",
   "chevron-right": "M6.4 4.4 10 8l-3.6 3.6",
   "panel-right": "M2.6 3.2h10.8v9.6H2.6V3.2ZM9.6 3.2v9.6",
   terminal: "M4.4 5.6 6.8 8l-2.4 2.4M8.4 11h3.2M2.6 3.2h10.8v9.6H2.6V3.2Z",
@@ -77,6 +86,9 @@ const PATHS: Record<IconName, string> = {
     "M4.6 3.6v8.8M4.6 5.6h4a2.2 2.2 0 0 1 2.2 2.2v4.6M4.6 14a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6ZM4.6 5.6a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6ZM12.6 14a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6Z",
   file: "M4 2.6h5l3 3v7.8H4V2.6ZM9 2.6v3h3",
   globe: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM2.4 8h11.2M8 2.2c1.7 1.7 2.6 3.7 2.6 5.8S9.7 12.1 8 13.8c-1.7-1.7-2.6-3.7-2.6-5.8S6.3 3.9 8 2.2Z",
+  video: "M2 4h8v8H2zM10 7l4-2v6l-4-2",
+  mic: "M5.5 3a2.5 2.5 0 015 0v4a2.5 2.5 0 01-5 0V3zM3.5 6.5V7a4.5 4.5 0 009 0v-.5M8 11.5V15M5.5 15h5",
+  audio: "M2 6v4M5 3v10M8 5v6M11 2v12M14 6v4",
   image: "M2.6 3.4h10.8v9.2H2.6V3.4ZM5.2 7a1.1 1.1 0 1 0 0-2.2A1.1 1.1 0 0 0 5.2 7ZM13.4 10.4 10 7.4l-5.2 5.2 3-2.6 2.4 2.1",
   diff: "M4.4 5.2h4.2M6.5 3.1v4.2M4.4 11.2h4.2M9.6 3.4h2M9.6 12.4h2M11.6 3.4v3.2a2 2 0 0 1-2 2H8.4a2 2 0 0 0-2 2v1.8",
   book: "M3.4 2.8h4.2a1.6 1.6 0 0 1 1.6 1.6v8.8L8 12l-1.2 1.2V4.4a1.6 1.6 0 0 0-1.6-1.6H3.4Z M12.6 2.8H9.2v9.2L8 12",

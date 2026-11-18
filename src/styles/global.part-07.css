@@ -5,7 +5,6 @@ body {
 }
 .nav-item,
 .thread-item__title,
-.project-node__tasks .thread-item__title,
 .settings-tabs__tab,
 .form__label,
 .btn,
@@ -268,7 +267,7 @@ button:disabled {
 }
 .badge {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: var(--fw-ui);
 }
 .form__input, .form__select, .form__textarea {
   background: var(--bg-input);

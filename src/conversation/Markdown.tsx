@@ -1,17 +1,13 @@
 import { createContext, memo, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { copyText, openExternal } from "../app/desktop/system";
+import { useAppStore } from "../app/state";
+import { LOCAL_FILE_LINK } from "../app/state/artifacts";
 import { Icon } from "../components/Icon";
 
-/**
- * Markdown 链接点击的接管入口（开发者 Jan）。
- *
- * 对话区不注册（null）：`http(s)` 走系统浏览器，相对路径本就没有目标，维持原状。
- * 「文件」tab 的 Markdown 预览注册后，产物内相对链接（`output/a.png`、`report.md`）
- * 会被解析成本应用可预览的文件位置，点击直接在右栏打开，不再无响应。
- */
+/** 会话正文和文件预览可以接管本地文件链接。 */
 const MarkdownLinkHandler = createContext<((href: string) => boolean) | null>(null);
 
 interface MarkdownProps {
@@ -73,6 +69,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
 
 /** 仅拦截 http(s) 链接；锚点、相对路径等交给浏览器默认行为（本应用内无路由可跳） */
 const EXTERNAL_LINK_PROTOCOL = /^https?:\/\//i;
+const INTERNAL_PATH = /^[a-z]:[\\/]/i;
 
 /**
  * 固定渲染组件类型，流式分片只更新内容，不卸载代码块或重置浏览器滚动状态（开发者 Jan）。
@@ -84,10 +81,11 @@ const EXTERNAL_LINK_PROTOCOL = /^https?:\/\//i;
 const MARKDOWN_COMPONENTS: Components = {
   a: ({ href, children }) => {
     const handleLink = useContext(MarkdownLinkHandler);
+    const localPath = Boolean(href && (LOCAL_FILE_LINK.test(href) || INTERNAL_PATH.test(href)));
     return (
       <a
-        href={href}
-        target="_blank"
+        href={localPath ? "#" : href}
+        target={localPath ? undefined : "_blank"}
         rel="noreferrer"
         onClick={(event) => {
           if (!href) return;
@@ -96,9 +94,16 @@ const MARKDOWN_COMPONENTS: Components = {
             event.preventDefault();
             return;
           }
+          if (localPath) {
+            event.preventDefault();
+            return;
+          }
           if (!EXTERNAL_LINK_PROTOCOL.test(href)) return;
           event.preventDefault();
-          void openExternal(href);
+          void openExternal(href).catch((error: unknown) => {
+            const reason = error instanceof Error ? error.message : String(error);
+            useAppStore.getState().showNotice(`无法打开链接：${reason}`);
+          });
         }}
       >
         {children}
@@ -123,6 +128,9 @@ export function MarkdownBase({ text, className }: MarkdownProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={MARKDOWN_COMPONENTS}
+        urlTransform={(url, key) => key === "href" && (LOCAL_FILE_LINK.test(url) || INTERNAL_PATH.test(url))
+          ? url
+          : defaultUrlTransform(url)}
       >
         {text}
       </ReactMarkdown>
@@ -140,13 +148,7 @@ export function MarkdownBase({ text, className }: MarkdownProps) {
  */
 export const Markdown = memo(MarkdownBase);
 
-/**
- * 链接接管提供者（开发者 Jan）：给一段 Markdown 树挂上「相对链接在本面板内打开」的能力。
- *
- * 只包住需要接管的调用点（当前是「文件」tab 的 Markdown 预览），不影响对话区与其他
- * 复用 `<Markdown>` 的位置——它们拿到的仍是 null，点击行为保持不变。handler 返回是否
- * 已消费，未消费的链接（`http(s)` 等）由组件内部继续走系统浏览器。
- */
+/** 接管当前 Markdown 树的文件链接，HTTP(S) 仍通过系统浏览器打开。 */
 export function MarkdownLinkScope({
   onLink,
   children,

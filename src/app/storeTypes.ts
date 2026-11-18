@@ -349,6 +349,11 @@ export interface AppStore {
   remoteModels: RemoteModel[];
   /** 当前选中模型派生出的连接信息，仅保存在内存，每次登录重新获取 */
   modelConfig: ModelConnection | null;
+  videoModelCode: string;
+  setVideoModelCode: (code: string) => void;
+  /** Explicit transcription model selection; only its code is persisted. */
+  audioModelCode: string;
+  setAudioModelCode: (code: string) => void;
   /**
    * 是否允许向模型输入图片（本地手动开关）。
    *
@@ -598,16 +603,12 @@ export interface AppStore {
    * 二进制产物的 `objectUrl` 在切换或取消选中时会被 revoke，避免内存泄漏。
    */
   activeArtifact:
-  | (ArtifactInfo & { content: string; objectUrl: string | null })
+  | (ArtifactInfo & { source: Exclude<FileLocation, { kind: "absolute" }>; content: string; objectUrl: string | null })
   | null;
   loadArtifacts: () => Promise<void>;
   selectArtifact: (name: string | null) => Promise<void>;
-  /**
-   * 打开一个应用内文件位置（开发者 Jan）：Markdown 相对链接导航的落点。
-   * 产物位置走 `selectArtifact`；工作区位置按扩展名分流字节 / 文本通道后
-   * 写进 `activeArtifact`，渲染层与产物预览共用同一形状。
-   */
-  openFileLocation: (target: FileLocation) => Promise<void>;
+  /** 接管当前会话的文件链接，读取成功后打开适用的预览。 */
+  openMarkdownLink: (href: string) => boolean;
   /**
    * 旧版共享产物目录 `<缓存>/artifacts/` 是否已迁移过（每次启动最多一次）。
    *

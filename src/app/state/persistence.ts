@@ -52,6 +52,8 @@ export function selectPersistedState(state: AppStore) {
     knowledgeFileLimitMb: state.knowledgeFileLimitMb,
     // 图片输入手动开关跟着落盘：它是设备级偏好，重启后不应被重置
     imageInputEnabled: state.imageInputEnabled,
+    videoModelCode: state.videoModelCode,
+    audioModelCode: state.audioModelCode,
     // 模型调用转储开关同样是设备级偏好：重启后保持用户的选择
     modelTraceEnabled: state.modelTraceEnabled,
     // 主题同样是设备级偏好：重启后保持用户挑好的外观
@@ -113,6 +115,7 @@ export function migratePersistedState(persisted: unknown): ReturnType<typeof sel
   if (Array.isArray(next.projects)) {
     next.projects = (next.projects as Record<string, unknown>[]).map((project) => ({
       ...project,
+      folders: Array.isArray(project.folders) ? project.folders.filter((p): p is string => typeof p === "string" && Boolean(p.trim())) : [],
       mcpIds: Array.isArray(project.mcpIds) ? project.mcpIds : [],
       skillIds: Array.isArray(project.skillIds) ? project.skillIds : [],
       sshHostIds: Array.isArray(project.sshHostIds) ? project.sshHostIds : [],

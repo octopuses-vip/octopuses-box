@@ -354,7 +354,7 @@ a.card[href]:hover,
 .form__input,
 .form__select,
 .form__textarea {
-  font-weight: 450;
+  font-weight: var(--fw-body);
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;

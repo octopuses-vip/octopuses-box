@@ -1,3 +1,4 @@
+import { taskKey, taskState, changeGoal } from "../tasks/store";
 
 import { writeCacheFile } from "../app/desktop/cache";
 import { useAppStore } from "../app/state";
@@ -171,6 +172,8 @@ export function buildHistory(
   prompt: string,
   attachments: MessageAttachment[],
   coveredCount = 0,
+  includeImages = true,
+  videoResult?: (id: string) => string | undefined,
 ): { history: ChatMessage[]; boundaries: number[] } {
   const history: ChatMessage[] = [];
   const boundaries: number[] = [];
@@ -183,7 +186,7 @@ export function buildHistory(
       const text = messageText(message.items);
       const carried = message.attachments ?? [];
       if (text.trim().length === 0 && carried.length === 0) continue;
-      history.push({ role: "user", content: toUserContent(text, carried) });
+      history.push({ role: "user", content: toUserContent(text, carried, includeImages) });
       continue;
     }
     // 助手消息里可能有「正文 → 调工具 → 正文 → 再调工具」多段：每遇到一批工具调用，
@@ -209,7 +212,7 @@ export function buildHistory(
         text += item.text;
       } else if (item.type === "question") {
         text += `${text.length > 0 ? "\n" : ""}${questionSummary(item)}`;
-      } else if (item.type === "tool_call" && item.callId && item.name && item.status !== "running") {
+      } else if (item.type === "tool_call" && item.callId && item.name && (item.status !== "running" || (item.videoJobId && videoResult?.(item.videoJobId)))) {
         pending.push({
           call: {
             id: item.callId,
@@ -217,7 +220,7 @@ export function buildHistory(
             function: { name: item.name, arguments: item.arguments ?? "{}" },
           },
           // 完整结果优先；旧会话只有被截断的展示文本时退回用它，总好过丢掉整轮工具历史
-          result: item.result ?? item.output,
+          result: (item.videoJobId ? videoResult?.(item.videoJobId) : undefined) ?? item.result ?? item.output,
         });
       }
     }
@@ -225,7 +228,7 @@ export function buildHistory(
     if (text.trim().length > 0) history.push({ role: "assistant", content: text });
   }
   boundaries.push(history.length);
-  history.push({ role: "user", content: toUserContent(prompt, attachments) });
+  history.push({ role: "user", content: toUserContent(prompt, attachments, includeImages) });
   return { history, boundaries };
 }
 
@@ -275,15 +278,12 @@ export function preview(text: string): string {
 }
 
 /** 本会话此前是否已成功写出过产物：已开工的会话不再给模型追问的机会 */
-export function hasProducedArtifact(messages: Message[] | undefined): boolean {
-  return (messages ?? []).some((message) =>
-    message.items.some(
-      (item) =>
-        item.type === "tool_call" &&
-        (item.kind === "write_artifact" || item.kind === "image_gen") &&
-        item.status === "success",
-    ),
-  );
+export function hasProducedArtifact(messages: Message[] | undefined, videoDone?: (id: string) => boolean): boolean {
+  return (messages ?? []).some((message) => message.items.some((item) => {
+    if (item.type !== "tool_call") return false;
+    if (item.kind === "video_gen") return Boolean(item.videoJobId && videoDone?.(item.videoJobId));
+    return item.status === "success" && (item.kind === "write_artifact" || item.kind === "image_gen");
+  }));
 }
 
 /**
@@ -540,6 +540,8 @@ export function cancelQueuedRequest(threadId: string, requestId: string): void {
  * 切走会话就没有停止入口的话，「任何时候都能终止」就不成立。
  */
 export function stopThreadRun(threadId: string): void {
+  const key = taskKey(useAppStore.getState().cachePath, threadId);
+  if (taskState(key).goal?.status === "active") changeGoal(key, "paused");
   runSlot(threadId).abort?.abort();
 }
 

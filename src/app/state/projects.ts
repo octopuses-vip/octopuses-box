@@ -16,6 +16,7 @@ export function parseCachedProjects(raw: string | null): Project[] | undefined |
       return typeof project.id === "string" && typeof project.name === "string" && typeof project.path === "string";
     }).map((project) => ({
       ...project,
+      folders: Array.isArray(project.folders) ? project.folders.filter((p): p is string => typeof p === "string" && Boolean(p.trim())) : [],
       mcpIds: Array.isArray(project.mcpIds) ? project.mcpIds.filter((id): id is string => typeof id === "string") : [],
       skillIds: Array.isArray(project.skillIds) ? project.skillIds.filter((id): id is string => typeof id === "string") : [],
       sshHostIds: Array.isArray(project.sshHostIds) ? project.sshHostIds.filter((id): id is string => typeof id === "string") : [],

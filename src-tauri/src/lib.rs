@@ -1,22 +1,36 @@
 mod agents;
+mod audio;
+mod audio_segments;
+mod audio_source;
 mod automation;
 mod cache;
 mod client_api;
 mod control;
 mod computer;
+mod computer_cross;
+mod browser_preview;
+mod companion;
 mod fileops;
 mod frontmatter;
 mod git;
+mod git_handoff;
+mod review;
 mod json_store;
 mod knowledge;
 mod knowledge_db;
 mod launch_agent;
+mod background_cross;
 mod mcp;
+mod mcp_http;
+mod plugins;
+mod office;
 mod model_proxy;
+mod video;
 mod parallel;
 mod platform;
 mod pty;
 mod sandbox;
+mod sandbox_cross;
 mod session_db;
 mod shell;
 mod skills;
@@ -58,6 +72,8 @@ pub fn run() {
         .manage(control::CdpState::default())
         .manage(automation::AutomationSchedulerState::default())
         .manage(model_proxy::ModelProxyState::default())
+        .manage(audio_segments::AudioSegmentsState::default())
+        .manage(audio_source::AudioSourcesState::default())
         .manage(knowledge::KnowledgeState::default())
         .setup(|app| {
             use tauri::{Emitter, Manager};
@@ -94,6 +110,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![
+            browser_preview::browser_preview_open,
+            companion::integration_paths,
+            companion::prepare_container,
+            companion::companion_start,
+            companion::companion_request,
+            companion::companion_connect,
             session_exit_listening,
             session_exit_ready,
             knowledge::knowledge_model_status,
@@ -107,6 +129,8 @@ pub fn run() {
             cache::cache_init,
             cache::cache_info,
             cache::cache_write,
+            cache::cache_write_atomic,
+            cache::cache_read_optional,
             cache::cache_append,
             cache::cache_read,
             cache::cache_clear,
@@ -137,10 +161,31 @@ pub fn run() {
             client_api::client_models,
             client_api::client_check_update,
             model_proxy::model_stream,
+            audio_segments::audio_prepare,
+            audio_segments::audio_transcribe_segment,
+            audio_segments::audio_release,
+            audio_source::audio_inspect,
+            audio_source::audio_stage_create,
+            audio_source::audio_stage_append,
+            audio_source::audio_stage_finish,
+            audio_source::audio_stage_release,
+            audio_source::audio_checkpoint_save,
+            video::video_download,
+            fileops::video_preview_path,
+            session_db::video_jobs,
+            session_db::video_save_job,
             model_proxy::model_abort,
             model_proxy::model_fetch,
             updater::update_download_and_install,
             updater::update_take_result,
+            office::office_render,
+            plugins::plugins_list,
+            plugins::plugins_fetch,
+            plugins::plugins_install,
+            plugins::plugins_uninstall,
+            mcp_http::mcp_oauth_begin,
+            mcp_http::mcp_oauth_status,
+            mcp_http::mcp_oauth_disconnect,
             mcp::mcp_list_servers,
             mcp::mcp_save_server,
             mcp::mcp_delete_server,
@@ -186,6 +231,8 @@ pub fn run() {
             git::git_repository_info,
             git::git_read_diff,
             git::git_list_worktrees,
+            git_handoff::git_handoff,
+            review::review_github,
             git::git_create_worktree,
             git::git_remove_worktree,
             git::git_stage,

@@ -1,0 +1,49 @@
+/* Text selection geometry adapted from PDF.js 6, Copyright Mozilla Foundation.
+ * Licensed under Apache-2.0; see THIRD_PARTY_NOTICES.md.
+ * Scope only the text layer: the full viewer stylesheet also defines .sidebar,
+ * .dialog and .toolbar and must never enter the application's global cascade.
+ */
+.office-pdf .textLayer {
+  color-scheme: only light;
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.office-pdf .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.office-pdf .textLayer > :not(.markedContent),
+.office-pdf .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.office-pdf .textLayer .markedContent { display: contents; }
+.office-pdf .textLayer span[role="img"] { user-select: none; cursor: default; }
+.office-pdf .textLayer ::selection { background: color-mix(in srgb, AccentColor, transparent 50%); color: transparent; }
+.office-pdf .textLayer br::selection { background: transparent; }
+.office-pdf .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
+.office-pdf .textLayer.selecting .endOfContent { top: 0; }

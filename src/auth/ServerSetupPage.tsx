@@ -12,16 +12,18 @@ import { Icon } from "../components/Icon";
  * 地址属于本机配置，只在从未配置过时出现一次；确认前会先探测管理端是否可达，
  * 避免把写错的地址存下来，跑到登录页才发现连不上。
  */
-export function ServerSetupPage() {
+export function ServerSetupPage({ onConfigured, onCancel }: { onConfigured?: () => void; onCancel?: () => void }) {
   const setEndpoint = useAppStore((state) => state.setEndpoint);
+  const endpoint = useAppStore((state) => state.endpoint);
   /** 表单中的主机与端口，用户改动前先由后端下发的默认值预填 */
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("");
+  const [host, setHost] = useState(endpoint?.host ?? "");
+  const [port, setPort] = useState(endpoint?.port ?? "");
   /** 正在校验与探测，期间禁止重复提交 */
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (endpoint) return;
     let cancelled = false;
     void defaultEndpoint()
       .then((value) => {
@@ -37,7 +39,7 @@ export function ServerSetupPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [endpoint]);
 
   const canSubmit = host.trim().length > 0 && port.trim().length > 0 && !busy;
 
@@ -49,6 +51,7 @@ export function ServerSetupPage() {
     try {
       // 后端先校验格式再探测连通性，成功时返回规范化后的地址
       setEndpoint(await probeEndpoint({ host, port }));
+      onConfigured?.();
     } catch (err) {
       setError(parseApiError(err).message);
     } finally {
@@ -65,7 +68,7 @@ export function ServerSetupPage() {
         </div>
         <h1 className="login__title">配置管理端地址</h1>
         <p className="login__sub">
-          请填写管理端主机名与端口，可使用 https:// 前缀。远程连接使用 HTTPS，HTTP 仅限本机开发。
+          请填写管理端主机名与端口。内网地址默认使用 HTTP，公网地址默认使用 HTTPS，也可填写协议前缀。
         </p>
 
         <form
@@ -110,6 +113,7 @@ export function ServerSetupPage() {
             <Button variant="primary" type="submit" disabled={!canSubmit}>
               {busy ? "正在连接…" : "确认并进入"}
             </Button>
+            {onCancel ? <Button variant="ghost" disabled={busy} onClick={onCancel}>取消</Button> : null}
           </div>
         </form>
 

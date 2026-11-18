@@ -1,3 +1,6 @@
+import { LIVE_BROWSER_TOOL } from "./liveBrowser";
+import { SELECT_WORKSPACE_TOOL } from "../tasks/workspaces";
+import { TASK_TOOLS } from "../tasks/tools";
 /**
  * 内置工具清单（开发者 Jan）。
  *
@@ -17,6 +20,8 @@ import { READ_SKILL_TOOL, READ_SKILL_TOOL_NAME } from "../skills/tool";
 import { ASK_USER_TOOL, ASK_USER_TOOL_NAME } from "./askUser";
 import { CONTROL_TOOLS, CONTROL_TOOL_NAMES } from "./control";
 import { CV_TOOLS } from "./cv";
+import { VIDEO_TOOL, VIDEO_TOOL_NAME } from "../video/protocol";
+import { TRANSCRIBE_AUDIO_NAME, TRANSCRIBE_AUDIO_TOOL } from "../audio/protocol";
 import { IMAGE_GEN_TOOL, IMAGE_GEN_TOOL_NAME } from "./imageGen";
 import { KNOWLEDGE_SEARCH_TOOL, KNOWLEDGE_SEARCH_TOOL_NAME } from "./knowledge";
 import { READ_URL_TOOL, READ_URL_TOOL_NAME } from "./readUrl";
@@ -29,8 +34,13 @@ import { WRITE_FILE_TOOL, WRITE_FILE_TOOL_NAME } from "./writeFile";
 
 /** 内置工具名全集：与挂载条件无关，用于判断「客户端到底有没有这个工具」 */
 export const CLIENT_TOOL_NAMES: string[] = [
+  LIVE_BROWSER_TOOL.function.name,
+  ...TASK_TOOLS.map((t) => t.function.name),
+  SELECT_WORKSPACE_TOOL.function.name,
   WRITE_FILE_TOOL_NAME,
   IMAGE_GEN_TOOL_NAME,
+  VIDEO_TOOL_NAME,
+  TRANSCRIBE_AUDIO_NAME,
   KNOWLEDGE_SEARCH_TOOL_NAME,
   WEB_SEARCH_TOOL.function.name,
   READ_URL_TOOL_NAME,
@@ -93,6 +103,9 @@ export interface BuiltinToolGroup {
  * 页面上看什么、模型就知道什么，避免两处说明各写各的。
  */
 export const BUILTIN_TOOL_GROUPS: BuiltinToolGroup[] = [
+  { title: "已有浏览器", condition: "桌面端，需后台服务及配对的浏览器扩展", tools: [LIVE_BROWSER_TOOL] },
+  { title: "任务计划", condition: "始终可用，受 Agent 工具白名单约束", tools: TASK_TOOLS },
+  { title: "音视频转写", condition: "桌面客户端且已选择语音识别模型", tools: [TRANSCRIBE_AUDIO_TOOL] },
   {
     title: "文件与工程",
     condition: "write_file 始终可用；工程工具需在会话中选中本地项目目录后挂载",
@@ -102,6 +115,11 @@ export const BUILTIN_TOOL_GROUPS: BuiltinToolGroup[] = [
     title: "联网检索",
     condition: "始终可用",
     tools: [WEB_SEARCH_TOOL, READ_URL_TOOL],
+  },
+  {
+    title: "视频生成",
+    condition: "桌面客户端，在设置中选择已开通的视频模型后可用",
+    tools: [VIDEO_TOOL],
   },
   {
     title: "图像生成",

@@ -15,6 +15,8 @@ import { fileNameFromPath, isDrawingFile } from "../model/drawings";
 import { importDrawings } from "../model/drawingImport";
 import { mimeFromName } from "../model/attachments";
 import type { AttachmentBatch } from "../model/attachmentDraft";
+import { isAudioFile, type AudioFile } from "../audio/files";
+import { inspectAudioFile } from "./desktop/audioFiles";
 
 /**
  * 一次拖入里的单个文件。
@@ -64,9 +66,10 @@ function emitFiles(batch: Promise<AttachmentBatch>): void {
  * 而原生拖放只给了路径。不补的话拖进来的 PNG 会以「未知类型」被拒——它本是被支持的。
  * 浏览器端由系统给 File 带好 MIME，这里按扩展名补齐两条通道的差异。
  */
-async function restoreFile(item: DroppedFile): Promise<File | null> {
+async function restoreFile(item: DroppedFile): Promise<AudioFile | null> {
   if (!item.path) return null;
   try {
+    if (isAudioFile({ name: item.name, type: mimeFromName(item.name) })) return await inspectAudioFile(item.path);
     const bytes = await readFileBytes({ kind: "absolute", path: item.path });
     return new File([bytes], item.name, { type: mimeFromName(item.name) });
   } catch {
@@ -97,8 +100,8 @@ export async function routeDroppedFiles(items: DroppedFile[]): Promise<void> {
 }
 
 /** 函数级说明（开发者 Jan）：执行 restoreFiles 的单一职责，并返回可供调用方继续处理的结果。 */
-async function restoreFiles(items: DroppedFile[]): Promise<AttachmentBatch> {
-  const files: File[] = [];
+export async function restoreFiles(items: DroppedFile[]): Promise<AttachmentBatch> {
+  const files: AudioFile[] = [];
   const failed: string[] = [];
   for (const item of items) {
     if (item.file) {

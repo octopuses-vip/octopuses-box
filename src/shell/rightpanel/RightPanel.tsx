@@ -1,3 +1,7 @@
+import { ReviewPanel } from "../../workflows/ReviewPanel";
+import { ConnectionsPanel } from "../../workflows/ConnectionsPanel";
+import { BrowserPanel } from "../../workflows/BrowserPanel";
+import { useWorkflowUI } from "../../workflows/store";
 import { useEffect, useMemo, type ComponentType } from "react";
 
 import { effectiveArtifactDir, hasDrawingFiles, rightPanelTabs } from "../../app/state/artifacts";
@@ -7,7 +11,7 @@ import type { RightTab } from "../../app/types";
 import { Icon, type IconName } from "../../components/Icon";
 import { FilePreview } from "./tabs/FilePreview";
 import { GitDiff } from "./tabs/GitDiff";
-import { ImagePreview } from "./tabs/ImagePreview";
+import { MediaPreview } from "./tabs/MediaPreview";
 import { ModelPreview } from "./tabs/ModelPreview";
 import { ReviewQueue } from "./tabs/ReviewQueue";
 import { Sources } from "./tabs/Sources";
@@ -15,9 +19,12 @@ import { WebPreview } from "./tabs/WebPreview";
 
 /** 顶栏 tab 的文案与图标；实际显示哪几个由 rightPanelTabs 按内容决定 */
 const TAB_META: Record<RightTab, { label: string; icon: IconName }> = {
+  pulls: { label: "PR", icon: "branch" },
+  tasks: { label: "后台任务", icon: "clock" },
+  browser: { label: "浏览器", icon: "globe" },
   files: { label: "文件", icon: "file" },
   web: { label: "网页", icon: "globe" },
-  media: { label: "图片", icon: "image" },
+  media: { label: "媒体", icon: "image" },
   model: { label: "3D", icon: "cube" },
   diff: { label: "差异", icon: "diff" },
   review: { label: "审阅", icon: "message" },
@@ -25,9 +32,12 @@ const TAB_META: Record<RightTab, { label: string; icon: IconName }> = {
 };
 
 const PANES: Record<RightTab, ComponentType> = {
+  pulls: ReviewPanel,
+  tasks: ConnectionsPanel,
+  browser: BrowserPanel,
   files: FilePreview,
   web: WebPreview,
-  media: ImagePreview,
+  media: MediaPreview,
   model: ModelPreview,
   diff: GitDiff,
   review: ReviewQueue,
@@ -54,15 +64,17 @@ export function RightPanel() {
       ?.reviewComments.filter((comment) => !comment.resolved).length ?? 0,
   );
   const artifactDir = useAppStore((state) => effectiveArtifactDir(state));
+  const previewName = useAppStore((state) => state.activeArtifact?.name);
   const rightPanelMaximized = useAppStore((state) => state.rightPanelMaximized);
   const setRightTab = useAppStore((state) => state.setRightTab);
   const setRightPanelOpen = useAppStore((state) => state.setRightPanelOpen);
   const setRightPanelMaximized = useAppStore((state) => state.setRightPanelMaximized);
   const toggleRightPanel = useAppStore((state) => state.toggleRightPanel);
 
+  const docks = useWorkflowUI((s) => s.docks);
   const tabs = useMemo(
     () =>
-      rightPanelTabs(
+      [...rightPanelTabs(
         artifacts,
         diffFiles,
         sources,
@@ -70,8 +82,9 @@ export function RightPanel() {
         unresolvedReviewCount,
         hasDrawingFiles(artifacts, workspaceImports),
         artifactDir !== null,
-      ),
-    [artifacts, workspaceImports, diffFiles, sources, gitDiffStatus, unresolvedReviewCount, artifactDir],
+        previewName,
+      ), ...docks],
+    [artifacts, workspaceImports, diffFiles, sources, gitDiffStatus, unresolvedReviewCount, artifactDir, previewName, docks],
   );
 
   // 没有任何内容时不占位：右栏自动收起

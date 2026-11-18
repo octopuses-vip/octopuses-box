@@ -28,32 +28,32 @@
 :root,
 [data-theme="graphite"][data-scheme="dark"] {
   /* 背景层级：数字越大越靠前（越贴近用户） */
-  --bg-0: #10151e;
-  --bg-1: #151d29;
-  --bg-2: #1c2635;
-  --bg-3: #253247;
-  --bg-hover: #202e40;
-  --bg-active: #233b50;
-  --bg-input: #182231;
+  --bg-0: #181818;
+  --bg-1: #202020;
+  --bg-2: #272727;
+  --bg-3: #343434;
+  --bg-hover: #2d2d2d;
+  --bg-active: #383838;
+  --bg-input: #242424;
   /* 比 bg-0 更深的凹陷面：代码块、工具输出、审批命令区 */
-  --bg-sunken: #0c111a;
+  --bg-sunken: #141414;
   /* 网页预览的 iframe 画布：两套模式都接近白，与主题无关 */
   --bg-preview: #ffffff;
   /* 终端：刻意不跟随主题，浅色主题下也保持深色终端 */
   --terminal-bg: #0a0a0a;
 
-  --border: #293648;
-  --border-strong: #40536b;
-  --border-focus: #63d1e6;
+  --border: #333333;
+  --border-strong: #484848;
+  --border-focus: #929292;
 
-  --text-1: #eaf1fa;
-  --text-2: #b0bfd1;
-  --text-3: #8c9db4;
+  --text-1: #ececec;
+  --text-2: #b4b4b4;
+  --text-3: #a1a1a1;
   /* 冰青按钮使用深色文字，确保对比度。 */
-  --text-on-strong: #082b36;
+  --text-on-strong: #171717;
 
-  --accent: #76d7e8;
-  --accent-hover: #9ce7f2;
+  --accent: #e4e4e4;
+  --accent-hover: #ffffff;
   --info: #8dbbfa;
   --success: #9abca4;
   --danger: #df9b96;
@@ -89,28 +89,28 @@
 
 /* ==================== 极简灰 · 浅色 ==================== */
 [data-theme="graphite"][data-scheme="light"] {
-  --bg-0: #f5f8fc;
-  --bg-1: #ffffff;
-  --bg-2: #edf2f8;
-  --bg-3: #e0e8f2;
-  --bg-hover: #eaf0f8;
-  --bg-active: #deedf5;
+  --bg-0: #ffffff;
+  --bg-1: #f9f9f9;
+  --bg-2: #f5f5f5;
+  --bg-3: #e9e9e9;
+  --bg-hover: #eeeeee;
+  --bg-active: #e8e8e8;
   --bg-input: #ffffff;
-  --bg-sunken: #eaf0f7;
+  --bg-sunken: #f7f7f7;
   --bg-preview: #ffffff;
   --terminal-bg: #0a0a0a;
 
-  --border: #d8e2ed;
-  --border-strong: #bccbdc;
-  --border-focus: #087d98;
+  --border: #e5e5e5;
+  --border-strong: #d0d0d0;
+  --border-focus: #969696;
 
-  --text-1: #17283e;
-  --text-2: #4e6077;
-  --text-3: #61738a;
+  --text-1: #242424;
+  --text-2: #606060;
+  --text-3: #6b6b6b;
   --text-on-strong: #ffffff;
 
-  --accent: #08758c;
-  --accent-hover: #065c70;
+  --accent: #242424;
+  --accent-hover: #444444;
   --info: #356ba8;
   --success: #557b60;
   --danger: #b55750;

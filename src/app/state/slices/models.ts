@@ -11,6 +11,10 @@ export const createModelsSlice: StoreSlice<
   | "modelOptions"
   | "remoteModels"
   | "modelConfig"
+  | "videoModelCode"
+  | "setVideoModelCode"
+  | "audioModelCode"
+  | "setAudioModelCode"
   | "imageInputEnabled"
   | "modelConfigStatus"
   | "modelConfigError"
@@ -19,6 +23,13 @@ export const createModelsSlice: StoreSlice<
   | "setImageInputEnabled"
 > = (set, get) => ({
   model: "",
+
+  videoModelCode: "",
+  setVideoModelCode: (videoModelCode) => set({ videoModelCode }),
+
+  audioModelCode: "",
+  /** Retain an explicit choice without guessing capability from model names. */
+  setAudioModelCode: (audioModelCode) => set({ audioModelCode }),
 
   modelOptions: [],
 

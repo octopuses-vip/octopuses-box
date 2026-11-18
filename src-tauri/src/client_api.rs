@@ -36,7 +36,7 @@ fn env_value(key: &str) -> Option<String> {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Endpoint {
-    /// 主机：可带 https:// 前缀，不含路径；HTTP 仅允许回环地址。
+    /// 主机：可带 http(s):// 前缀，不含路径；内网主机默认使用 HTTP。
     pub host: String,
     /// 端口：1-65535 的十进制数字串
     pub port: String,
@@ -87,9 +87,9 @@ impl Endpoint {
                 "管理端地址不能包含账号、路径、查询参数或片段",
             ));
         }
-        if url.scheme() == "http" && !is_loopback_host(url.host_str().unwrap_or_default()) {
+        if url.scheme() == "http" && !should_bypass_proxy(url.as_str()) {
             return Err(invalid_endpoint(
-                "远程管理端必须使用 HTTPS；HTTP 仅限本机开发",
+                "公网管理端请使用 HTTPS；内网管理端可以使用 HTTP",
             ));
         }
         Ok(())
@@ -106,25 +106,18 @@ impl Endpoint {
         Err(invalid_endpoint("端口需要是 1-65535 之间的数字"))
     }
 
-    /// 旧配置自动对远程主机使用 HTTPS，本机保留 HTTP。显式协议仍需通过 validate。
+    /// 保留显式协议；未注明协议的本机与内网地址沿用 HTTP，公网地址默认 HTTPS。
     pub fn base_url(&self) -> String {
         let endpoint = self.normalized();
         let prefix = if endpoint.host.contains("://") {
             ""
-        } else if is_loopback_host(&endpoint.host) {
+        } else if should_bypass_proxy(&format!("http://{}", endpoint.host)) {
             "http://"
         } else {
             "https://"
         };
         format!("{}{}:{}", prefix, endpoint.host, endpoint.port)
     }
-}
-
-fn is_loopback_host(host: &str) -> bool {
-    host.eq_ignore_ascii_case("localhost")
-        || host
-            .parse::<std::net::IpAddr>()
-            .is_ok_and(|address| address.is_loopback())
 }
 
 /// 构造一个「地址格式不合法」的错误：`code` 取 400，与文档中该状态码的语义一致
@@ -286,7 +279,11 @@ pub(crate) fn should_bypass_proxy(url: &str) -> bool {
     let Some(host) = parsed.host_str() else {
         return false;
     };
-    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+    if let Ok(ip) = host
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .parse::<std::net::IpAddr>()
+    {
         return match ip {
             std::net::IpAddr::V4(v4) => {
                 v4.is_loopback() || v4.is_private() || v4.is_link_local() || v4.is_unspecified()
@@ -294,12 +291,13 @@ pub(crate) fn should_bypass_proxy(url: &str) -> bool {
             std::net::IpAddr::V6(v6) => {
                 v6.is_loopback()
                     || v6.is_unspecified()
+                    || v6.is_unicast_link_local()
                     // fc00::/7 唯一本地地址（ULA）：is_unique_local 仍在稳定化之外，按位判断
                     || (v6.segments()[0] & 0xfe00) == 0xfc00
             }
         };
     }
-    host == "localhost" || host.ends_with(".local")
+    host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local")
 }
 
 /// 按 URL 选客户端：内网直连、公网走共享连接池（含代理语义）。
@@ -545,7 +543,7 @@ mod tests {
         std::env::set_var("OCTOPUSES_PORT", "9527");
         assert_eq!(
             Endpoint::from_env_or_default().base_url(),
-            "https://10.0.0.8:9527"
+            "http://10.0.0.8:9527"
         );
 
         // 全空白等同于未配置，应回落默认值而不是拼出畸形地址
@@ -568,7 +566,7 @@ mod tests {
         assert!(endpoint("  10.0.0.8  ", " 8000 ").validate().is_ok());
         assert_eq!(
             endpoint("  10.0.0.8  ", " 8000 ").base_url(),
-            "https://10.0.0.8:8000"
+            "http://10.0.0.8:8000"
         );
     }
 
@@ -580,13 +578,15 @@ mod tests {
     }
 
     #[test]
-    fn validate_accepts_https_and_rejects_insecure_remote_or_url_extras() {
+    fn validate_accepts_local_http_and_rejects_public_http_or_url_extras() {
         assert!(endpoint("https://server.example.com", "443")
             .validate()
             .is_ok());
         assert!(endpoint("http://127.0.0.1", "8000").validate().is_ok());
+        assert!(endpoint("http://10.0.0.8", "8000").validate().is_ok());
         for host in [
-            "http://10.0.0.8",
+            "http://server.example.com",
+            "http://8.8.8.8",
             "https://user:pass@server.example.com",
             "https://server.example.com/api",
             "https://server.example.com?x=1",
@@ -603,6 +603,90 @@ mod tests {
             endpoint("server.example.com", "443").base_url(),
             "https://server.example.com:443"
         );
+    }
+
+    #[test]
+    fn lan_endpoints_keep_http_compatibility_and_explicit_https() {
+        for host in [
+            "192.168.1.8",
+            "10.0.0.8",
+            "172.16.0.8",
+            "server.local",
+            "[::1]",
+            "[fd00::8]",
+        ] {
+            let configured = endpoint(host, "8000");
+            assert_eq!(configured.base_url(), format!("http://{host}:8000"));
+            assert!(configured.validate().is_ok(), "{host}");
+            assert!(should_bypass_proxy(&configured.base_url()), "{host}");
+        }
+        let secure = endpoint("https://192.168.1.8", "8000");
+        assert!(secure.validate().is_ok());
+        assert_eq!(secure.base_url(), "https://192.168.1.8:8000");
+    }
+
+    #[tokio::test]
+    async fn probe_and_login_use_configured_http_through_native_client() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let server = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let configured = endpoint(
+            "http://127.0.0.1",
+            &server.local_addr().unwrap().port().to_string(),
+        );
+        let handler = tokio::spawn(async move {
+            for is_login in [false, true] {
+                let (mut socket, _) = server.accept().await.unwrap();
+                let mut request = vec![];
+                let mut buffer = [0; 4096];
+                let header_end = loop {
+                    let count = socket.read(&mut buffer).await.unwrap();
+                    assert!(count > 0);
+                    request.extend_from_slice(&buffer[..count]);
+                    if let Some(offset) = request.windows(4).position(|part| part == b"\r\n\r\n") {
+                        break offset + 4;
+                    }
+                };
+                let headers = String::from_utf8_lossy(&request[..header_end]);
+                let length = headers
+                    .lines()
+                    .find_map(|line| {
+                        line.to_ascii_lowercase()
+                            .strip_prefix("content-length:")
+                            .map(|s| s.trim().parse::<usize>().unwrap())
+                    })
+                    .unwrap_or(0);
+                if is_login {
+                    assert!(headers.starts_with("POST /api/client/login HTTP/1.1"));
+                    while request.len() < header_end + length {
+                        let count = socket.read(&mut buffer).await.unwrap();
+                        assert!(count > 0);
+                        request.extend_from_slice(&buffer[..count]);
+                    }
+                    let submitted: serde_json::Value =
+                        serde_json::from_slice(&request[header_end..]).unwrap();
+                    assert_eq!(submitted["username"], "fixture");
+                    assert_eq!(submitted["password"], "fixture-only");
+                } else {
+                    assert!(headers.starts_with("GET / HTTP/1.1"));
+                    assert!(!headers.to_ascii_lowercase().contains("authorization:"));
+                }
+                let (status, body) = if is_login {
+                    (
+                        "200 OK",
+                        r#"{"code":0,"data":{"token":"test","user":{"id":1,"username":"fixture","status":1}}}"#,
+                    )
+                } else {
+                    ("401 Unauthorized", "")
+                };
+                socket.write_all(format!("HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes()).await.unwrap();
+            }
+        });
+        assert_eq!(client_probe(configured.clone()).await.unwrap(), configured);
+        let logged_in = client_login(configured, "  fixture  ".into(), "fixture-only".into())
+            .await
+            .unwrap();
+        assert_eq!(logged_in.user.username, "fixture");
+        handler.await.unwrap();
     }
 
     #[test]

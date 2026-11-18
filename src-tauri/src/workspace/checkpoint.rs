@@ -102,7 +102,7 @@ pub(super) fn ensure_checkpoint(
     targets: &[PathBuf],
 ) -> Result<String, String> {
     let root = canonical_workspace(project_path)?;
-    let key = run_key(thread_id, run_id);
+    let key = format!("{}:{}", run_key(thread_id, run_id), root.display());
     let mut runs = state
         .run_checkpoints
         .lock()

@@ -1,3 +1,4 @@
+import { setGoal, taskKey, useTaskStore } from "../tasks/store";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAppStore } from "../app/state";
@@ -6,6 +7,7 @@ import { ConversationStream } from "../conversation/ConversationStream";
 import { messagePlainText, messageQuote } from "../conversation/transcript";
 import { cancelQueuedRequest, useAgentRun, type AgentSubmitMode } from "../hooks/useAgentRun";
 import { Composer } from "./composer/Composer";
+import { TaskPanel } from "../tasks/TaskPanel";
 import { SessionHeader } from "./SessionHeader";
 import { useKnowledgeStore } from "../knowledge/store";
 import { draftKey, setDraftText, useConversationDrafts } from "../model/conversationDrafts";
@@ -60,6 +62,9 @@ export function ThreadView() {
       mode: AgentSubmitMode = "run",
     ) => {
       setPrompt("");
+      const key = taskKey(useAppStore.getState().cachePath, activeThreadId);
+      if (/^\/goal\s+/.test(value)) { setGoal(key, value.replace(/^\/goal\s+/, "")); return; }
+      if (/^\/plan(?:\s|$)/.test(value)) { useTaskStore.getState().patch(key, { mode: "plan" }); value = value.replace(/^\/plan\s*/, "") || "请调查当前项目并制定实施计划。"; }
       run(activeThreadId, value, attachments, { mode });
     },
     [run, activeThreadId, setPrompt],
@@ -101,6 +106,7 @@ export function ThreadView() {
         onFollowUp={handleFollowUp}
         onRegenerate={handleRegenerate}
       />
+      <TaskPanel />
       <Composer
         key={`composer:${activeThreadId}`}
         prompt={prompt}

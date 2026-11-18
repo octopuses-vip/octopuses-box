@@ -105,15 +105,15 @@ export function shortcutHint(key: string): string {
 
 /** 是否支持 macOS 内核级写隔离沙箱（开发者 Jan）；Seatbelt / `sandbox-exec` */
 export function supportsKernelSandbox(): boolean {
-  return isMac();
+  return isMac() || isLinux() || isWindows();
 }
 
 /** 是否支持桌面自动化（开发者 Jan）；AppleScript 系脚本、截图、按坐标点击 */
 export function supportsDesktopAutomation(): boolean {
-  return isMac();
+  return isMac() || isLinux() || isWindows();
 }
 
 /** 是否支持系统级后台定时（开发者 Jan）；应用关闭后由系统唤起，macOS 走 LaunchAgent */
 export function supportsBackgroundAgents(): boolean {
-  return isMac();
+  return isMac() || isLinux() || isWindows();
 }

@@ -17,7 +17,6 @@ body {
   font-family: var(--font-sans);
   font-size: var(--fs-base);
   line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
@@ -648,7 +647,7 @@ html[data-platform="linux"] .titlebar {
  * 任务行的「子项」质感（开发者 Jan）
  *
  * 光靠缩进和 12px 字号层级仍糊：项目与任务选中时是两块同色同高的药丸并排。
- * 这里把子项整体调轻——标题减重到 400、行高收窄（上下 4px），
+ * 子项标题使用正文字重，行高收窄（上下 4px），
  * 选中态不再沿用项目行的实底（--bg-active），改用更浅的 hover 底色
  * 加 2px 主题色左标；父行重、子行轻、选中样式也不同，三层区分同时生效。
  */
@@ -658,7 +657,7 @@ html[data-platform="linux"] .titlebar {
 }
 
 .project-node__tasks .thread-item__title {
-  font-weight: 400;
+  font-weight: var(--fw-body);
 }
 
 .project-node__tasks .thread-item--active {

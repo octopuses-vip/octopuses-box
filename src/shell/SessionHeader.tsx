@@ -1,3 +1,5 @@
+import { ExecutionLocation } from "../workflows/ExecutionLocation";
+import { useWorkflowUI } from "../workflows/store";
 import { effectiveArtifactDir, hasDrawingFiles, rightPanelTabs } from "../app/state/artifacts";
 import { effectiveWorkspacePath } from "../app/state/workspace";
 import { formatTokens, selectActiveSources, selectActiveThread } from "../app/storeSelectors";
@@ -15,6 +17,7 @@ export function SessionHeader() {
   useAppStore((state) => state.platform);
   const thread = useAppStore(selectActiveThread);
   const workspacePath = useAppStore(effectiveWorkspacePath);
+  const hasDocks = useWorkflowUI((s) => s.docks.length > 0);
   const terminalOpen = useAppStore((state) => state.terminalOpen);
   const toggleTerminal = useAppStore((state) => state.toggleTerminal);
   const rightPanelOpen = useAppStore((state) => state.rightPanelOpen);
@@ -34,6 +37,7 @@ export function SessionHeader() {
       unresolved,
       hasDrawingFiles(state.artifacts, state.workspaceImports),
       effectiveArtifactDir(state) !== null,
+      state.activeArtifact?.name,
     ).length > 0;
   });
 
@@ -53,14 +57,11 @@ export function SessionHeader() {
     <header className="main-head">
       <div className="main-head__identity">
         <div className="main-head__title">{thread?.title ?? "新会话"}</div>
-        {pathLabel || thread?.branch ? (
-          <div className="main-head__path" title={workspacePath ?? undefined}>
-            {pathLabel}
-            {thread?.branch ? ` · ${thread.branch}` : ""}
-          </div>
-        ) : null}
+        <ExecutionLocation label={pathLabel ?? "选择工作目录"} />
       </div>
       <div className="main-head__actions">
+        <button className="head-action" onClick={() => useWorkflowUI.getState().open("review")} title="查看拉取请求与检查"><span>审查</span></button>
+        <IconButton icon="globe" label="浏览器与页面预览" onClick={() => useWorkflowUI.getState().open("browser")} />
         {/* 用量来自会话库的 run_usage 汇总（服务端口径），无记录时不占位 */}
         {threadUsage && threadUsage.runs > 0 ? (
           <span
@@ -86,9 +87,9 @@ export function SessionHeader() {
         <IconButton
           icon="panel-right"
           active={rightPanelOpen}
-          label={hasPanelContent ? "右侧面板" : "右侧面板（暂无内容）"}
-          title={hasPanelContent ? "右侧面板" : "模型产出文件、差异或审阅意见后即可展开"}
-          disabled={!hasPanelContent}
+          label={hasPanelContent || hasDocks ? "右侧面板" : "右侧面板（暂无内容）"}
+          title={hasPanelContent || hasDocks ? "右侧面板" : "模型产出文件、差异或审阅意见后即可展开"}
+          disabled={!hasPanelContent && !hasDocks}
           onClick={toggleRightPanel}
         />
       </div>

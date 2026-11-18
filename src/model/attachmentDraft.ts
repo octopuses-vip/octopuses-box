@@ -1,8 +1,9 @@
 import type { MessageAttachment } from "../app/types";
 import type { AttachmentResult } from "./attachments";
+import type { AudioFile } from "../audio/files";
 
 export interface AttachmentBatch {
-  files: File[];
+  files: AudioFile[];
   failed: string[];
 }
 
@@ -29,7 +30,7 @@ export class AttachmentDraft {
     for (const listener of this.listeners) listener();
   }
 
-  add(batch: Promise<AttachmentBatch>, read: (file: File) => Promise<AttachmentResult>): void {
+  add(batch: Promise<AttachmentBatch>, read: (file: AudioFile) => Promise<AttachmentResult>): void {
     const job = this.readBatch(batch, read).finally(() => {
       this.jobs.delete(job);
       this.update({ pending: this.jobs.size });
@@ -38,7 +39,7 @@ export class AttachmentDraft {
     this.update({ pending: this.jobs.size });
   }
 
-  private async readBatch(batch: Promise<AttachmentBatch>, read: (file: File) => Promise<AttachmentResult>): Promise<void> {
+  private async readBatch(batch: Promise<AttachmentBatch>, read: (file: AudioFile) => Promise<AttachmentResult>): Promise<void> {
     const added: MessageAttachment[] = [];
     const rejected: string[] = [];
     try {

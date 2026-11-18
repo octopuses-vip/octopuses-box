@@ -72,3 +72,26 @@ pub fn usage_summary(
         project_id.as_deref(),
     )
 }
+
+/// Restore jobs independently of the lazy-loaded conversation and selected answer version.
+#[tauri::command]
+pub fn video_jobs(cache_dir: String) -> Result<Vec<String>, String> {
+    let (db, _) = open(Path::new(&cache_dir))?;
+    let mut query = db.prepare("SELECT payload FROM video_job").map_err(|e| e.to_string())?;
+    let rows = query.query_map([], |row| row.get(0)).map_err(|e| e.to_string())?;
+    rows.collect::<rusqlite::Result<_>>().map_err(|e| e.to_string())
+}
+
+/// Reserve a submission before contacting the provider. Updates cannot recreate a deleted job.
+#[tauri::command]
+pub fn video_save_job(cache_dir: String, thread_id: String, id: String, payload: String, create: bool) -> Result<(), String> {
+    let (db, _) = open(Path::new(&cache_dir))?;
+    let sql = if create {
+        "INSERT INTO video_job (payload, id, conversation_id) VALUES (?1, ?2, ?3)"
+    } else {
+        "UPDATE video_job SET payload = ?1 WHERE id = ?2 AND conversation_id = ?3"
+    };
+    let count = db.execute(sql, rusqlite::params![payload, id, thread_id]).map_err(|e| e.to_string())?;
+    if count == 0 { return Err("视频任务已移除".into()); }
+    Ok(())
+}
