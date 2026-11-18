@@ -1,5 +1,4 @@
 import { ModePicker } from "../../tasks/ModePicker";
-import { VoiceInput } from "../../audio/VoiceInput";
 import { taskKey, useTaskStore } from "../../tasks/store";
 import { useWorkflowUI } from "../../workflows/store";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -23,7 +22,6 @@ import { EffortSlider } from "./EffortSlider";
 import { ModelPicker } from "./ModelPicker";
 import { PermissionPicker } from "./PermissionPicker";
 import { SLASH_COMMANDS, type SlashItem } from "./commands";
-import { AudioTranscriptionButton } from "../../audio/AudioTranscriptionButton";
 import { isAudioFile, isNativeAudioFile } from "../../audio/files";
 import { transcribeAudio, transcriptAttachment, transcriptionConnection } from "../../audio/transcription";
 
@@ -553,11 +551,6 @@ export function Composer({
               <PermissionPicker />
             </div>
             <div className="composer__row-group composer__row-group--end">
-              <VoiceInput onText={(text) => onPromptChange([prompt, text].filter(Boolean).join("\n"))} onTurn={(text) => onSubmit(text, [], "steer")} />
-              <AudioTranscriptionButton onInsert={(text) => {
-                onPromptChange(prompt ? `${prompt}\n\n${text}` : text);
-                requestAnimationFrame(() => textareaRef.current?.focus());
-              }} />
               <ContextChip onAddAttachments={() => {
                 if (!isDesktopRuntime()) { fileInputRef.current?.click(); return; }
                 addFiles(pickFiles({ title: "选择附件" }).then((paths) => restoreFiles(paths.map((path) => ({ path, name: path.split(/[\\/]/).pop() ?? path, file: null })))));
