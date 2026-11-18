@@ -17,6 +17,7 @@ export const createAutomationsSlice: StoreSlice<
   | "automationRuns"
   | "automationStatus"
   | "automationError"
+  | "automationScheduleError"
   | "loadAutomations"
   | "createAutomation"
   | "updateAutomation"
@@ -33,6 +34,7 @@ export const createAutomationsSlice: StoreSlice<
   automationStatus: "idle",
 
   automationError: null,
+  automationScheduleError: null,
 
   loadAutomations: async () => {
     set({ automationStatus: "loading", automationError: null });
@@ -45,17 +47,33 @@ export const createAutomationsSlice: StoreSlice<
       const stored = parseAutomations(
         await readCacheFile(cachePath, "automations/tasks.json"),
       );
-      const runs = parseAutomationRuns(
+      const loadedRuns = parseAutomationRuns(
         await readCacheFile(cachePath, "automations/runs.json"),
       );
+      if (get().cachePath !== cachePath) return;
+      const liveRunIds = new Set(get().automationRuns.filter((run) =>
+        run.status === "queued" || run.status === "running",
+      ).map((run) => run.id));
+      const runs = loadedRuns.map((run): AutomationRun => {
+        if ((run.status !== "queued" && run.status !== "running") || liveRunIds.has(run.id)) return run;
+        return { ...run, status: "aborted", finishedAt: Date.now(), error: "上次运行随客户端退出而中断" };
+      });
       // 首次使用写入示例任务；已有用户补入新的本地向量化任务，避免升级后缺少默认计划。
-      const automations = stored
+      const tasks = stored
         ? stored.some((item) => item.id === DEFAULT_KNOWLEDGE_INDEX_AUTOMATION.id)
           ? stored
           : [...stored, DEFAULT_KNOWLEDGE_INDEX_AUTOMATION]
         : SAMPLE_AUTOMATIONS;
+      const automations = tasks.map((task) => {
+        if (!task.enabled || task.nextRunAt !== null) return task;
+        const nextRunAt = nextRunAtForTask(task, task.lastRunAt ?? Date.now());
+        return nextRunAt === null ? task : { ...task, nextRunAt };
+      });
       set({ automations, automationRuns: runs, automationStatus: "ready" });
-      if (stored === null || automations.length !== stored.length) persistAutomations(get().cachePath, automations, runs);
+      if (stored === null || tasks !== stored || automations.some((task, index) => task !== tasks[index])
+        || runs.some((run, index) => run !== loadedRuns[index])) {
+        persistAutomations(cachePath, automations, runs);
+      }
     } catch (error) {
       set({
         automationStatus: "error",
@@ -135,7 +153,7 @@ export const createAutomationsSlice: StoreSlice<
   startAutomationRun: (id, trigger) => {
     const state = get();
     const task = state.automations.find((item) => item.id === id);
-    if (!task) return null;
+    if (!task || (trigger === "schedule" && (!task.enabled || task.nextRunAt === null))) return null;
     const duplicate = state.automationRuns.some(
       (run) => run.automationId === id && (run.status === "queued" || run.status === "running"),
     );
@@ -144,10 +162,12 @@ export const createAutomationsSlice: StoreSlice<
     // 线程可能已被用户删除，此时按新会话处理，避免往不存在的会话里排队。
     const reusable =
       task.threadId !== null && state.threads.some((thread) => thread.id === task.threadId);
-    const threadId =
-      reusable && task.threadId !== null
+    const localIndex = task.kind === "knowledge-index";
+    const threadId = localIndex ? ""
+      : reusable && task.threadId !== null
         ? task.threadId
         : state.createThread(task.name, task.projectId, trigger === "manual", task.agentId);
+    if (!localIndex && !threadId) return null;
     const startedAt = Date.now();
     const record: AutomationRun = {
       id: nextId("run"),
@@ -166,10 +186,11 @@ export const createAutomationsSlice: StoreSlice<
       item.id === id
         ? {
           ...item,
-          threadId,
+          threadId: localIndex ? null : threadId,
           lastRunAt: startedAt,
-          // 触发即推进计划时间：进程内 tick 与系统定时项都不会重复触发这一轮
-          nextRunAt: nextRunAtForTask(item, startedAt),
+          nextRunAt: !item.enabled ? null
+            : trigger === "manual" ? item.nextRunAt
+            : nextRunAtForTask(item, startedAt),
         }
         : item,
     );

@@ -62,11 +62,6 @@ export interface AgentInfo {
   path: string;
 }
 
-/** 被系统定时项唤起时的事件载荷 */
-export interface AutomationWakeEvent {
-  automationId: string;
-}
-
 /** 注册（或按当前路径重装）一批后台定时项；重复调用幂等 */
 export async function installAutomationAgents(specs: AgentSpec[]): Promise<AgentInfo[]> {
   if (!isDesktopRuntime()) return [];
@@ -100,15 +95,6 @@ export async function takeAutomationWake(): Promise<string | null> {
   if (!isDesktopRuntime()) return null;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<string | null>("automation_take_wake");
-}
-
-/** 监听「被系统定时项唤起」事件 */
-export async function listenAutomationWake(
-  handler: (event: AutomationWakeEvent) => void,
-): Promise<() => void> {
-  if (!isDesktopRuntime()) return () => { };
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AutomationWakeEvent>("automation-wake", (event) => handler(event.payload));
 }
 
 /** 退出应用：被定时项唤起并执行完成后调用，避免留下多余窗口 */

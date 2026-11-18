@@ -201,7 +201,7 @@ test("消息流实际渲染千条历史时只挂载最新100条", () => {
   const original = { ...initial };
   Object.assign(initial, useAppStore.getState());
   try {
-    const html = renderToStaticMarkup(createElement(ConversationStreamBase, { onPromptChange: () => {}, onSubmit: () => {}, onFollowUp: () => {}, onRegenerate: () => {} }));
+    const html = renderToStaticMarkup(createElement(ConversationStreamBase, { onSubmit: () => {}, onFollowUp: () => {}, onRegenerate: () => {} }));
     assert.equal((html.match(/data-message-id=/g) ?? []).length, 100);
     assert.match(html, /还有 900 条/);
     assert.equal(html.includes('data-message-id="render-0"'), false);

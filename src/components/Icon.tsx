@@ -3,7 +3,6 @@ import type { CSSProperties } from "react";
 export type IconName =
   | "plus"
   | "search"
-  | "puzzle"
   | "clock"
   | "sparkles"
   | "folder"
@@ -60,8 +59,6 @@ const PATHS: Record<IconName, string> = {
   play: "M5 3.5 12 8 5 12.5Z",
   plus: "M8 3.5v9M3.5 8h9",
   search: "M7.2 12.4a5.2 5.2 0 1 0 0-10.4 5.2 5.2 0 0 0 0 10.4ZM11.2 11.2 14 14",
-  puzzle:
-    "M3 6.2h2.2a1.4 1.4 0 1 1 2.8 0H10v2.1a1.4 1.4 0 1 0 0 2.8v2H3V6.2ZM10 9.1V6.2",
   clock: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM8 4.8V8l2.2 1.3",
   sparkles:
     "M8 2.4l1.2 3.1L12.3 6.7 9.2 7.9 8 11 6.8 7.9 3.7 6.7l3.1-1.2L8 2.4ZM12.4 10.6l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6.6-1.5Z",

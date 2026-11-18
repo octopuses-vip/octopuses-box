@@ -10,7 +10,6 @@ import type { Message, MessageAttachment, QuestionAnswers, StreamItem } from "..
 import { Icon } from "../components/Icon";
 import { resolveCommandApproval } from "../hooks/useAgentRun";
 import { useAutoScroll } from "../hooks/useAutoScroll";
-import { NEW_CHAT_SUGGESTIONS } from "../mock/threads";
 import { AnswerText } from "./blocks/AnswerText";
 import { ApprovalCard } from "./blocks/ApprovalCard";
 import { CheckpointCard } from "./blocks/CheckpointCard";
@@ -149,7 +148,6 @@ function renderItem(
 }
 
 interface ConversationStreamProps {
-  onPromptChange: (value: string) => void;
   onSubmit: (prompt: string, attachments: MessageAttachment[]) => void;
   /** 「追问」：把某条消息作为引用交给输入框（由 `ThreadView` 填进去并聚焦） */
   onFollowUp: (message: Message) => void;
@@ -164,7 +162,6 @@ interface ConversationStreamProps {
  * 真正的运行与落盘都交给上层，因此这里不直接触碰 store 的写入动作。
  */
 export function ConversationStreamBase({
-  onPromptChange,
   onSubmit,
   onFollowUp,
   onRegenerate,
@@ -323,39 +320,6 @@ export function ConversationStreamBase({
     if (running) { setHistoryEnd(null); scrollToBottom(); }
   }, [running, scrollToBottom]);
 
-  if (messages.length === 0) {
-    return (
-      <div className="conversation-stream">
-        <div className="chat-scroll">
-          <div className="empty-state">
-            <div className="empty-state__mark" aria-hidden="true">
-              <Icon name="sparkles" size={26} />
-            </div>
-            <div className="empty-state__title">今天想做些什么？</div>
-            <p className="empty-state__desc">描述一个任务，或从下面的想法开始。</p>
-            <div className="suggestion-grid">
-              {NEW_CHAT_SUGGESTIONS.map((suggestion, index) => (
-                <button
-                  type="button"
-                  className="suggestion"
-                  key={suggestion}
-                  onClick={() => {
-                    onPromptChange(suggestion);
-                    onSubmit(suggestion, []);
-                  }}
-                >
-                  <span className="suggestion__index" aria-hidden="true">0{index + 1}</span>
-                  <span className="suggestion__text">{suggestion}</span>
-                  <Icon name="chevron-right" size={16} />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="conversation-stream">
       <div className="chat-scroll" ref={ref} onScroll={onScroll}>
@@ -401,6 +365,7 @@ export function ConversationStreamBase({
       {!pinned ? (
         <div className="chat-latest-bar">
           <button type="button" className="btn btn--sm" onClick={() => { setHistoryEnd(null); setVisibleCount(100); requestAnimationFrame(scrollToBottom); }}>
+            <Icon name="arrow-up" size={12} />
             回到最新
           </button>
         </div>
@@ -415,6 +380,6 @@ export function ConversationStreamBase({
  * 输入内容由上层 `ThreadView` 持有，每次按键都会让它重渲染；若不拦截，消息流会跟着重算，
  * 消息块里的 Markdown 会被整段替换（一次按键上百次 DOM 变更），WebKit 借此调整滚动位置，
  * 把原本贴底的会话拽到中间——浏览器端滚动策略不同，所以只在客户端复现。
- * 四个入参在上层已用 `useCallback` / `useState` 固定引用，内容不变时 memo 直接短路。
+ * 上层通过 `useCallback` 固定传入的回调引用。
  */
 export const ConversationStream = memo(ConversationStreamBase);

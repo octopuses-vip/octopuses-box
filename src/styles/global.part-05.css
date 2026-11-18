@@ -539,79 +539,7 @@ a.card[href]:hover,
   font-size: var(--fs-md);
 }
 
-.empty-state {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 16px;
-  width: min(100%, 760px);
-  margin-inline: auto;
-  padding: 48px 32px;
-  text-align: left;
-}
-
-.empty-state__mark {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-1);
-  color: var(--accent);
-}
-
-.empty-state__eyebrow {
-  color: var(--text-2);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.08em;
-}
-
-.empty-state__desc {
-  margin: -6px 0 10px;
-  color: var(--text-2);
-  max-width: 440px;
-}
-
-.empty-state__title {
-  font-size: clamp(21px, 2.4vw, 30px);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.suggestion-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  width: min(100%, 620px);
-}
-
-.suggestion {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-1);
-  padding: 16px;
-  text-align: left;
-  font-size: var(--fs-base);
-  color: var(--text-2);
-  line-height: 1.65;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-}
-
-.suggestion:hover {
-  border-color: var(--border-strong);
-  background: var(--bg-2);
-  color: var(--text-1);
-}
-
 @container main (max-width: 500px) {
-  .suggestion-grid {
-    grid-template-columns: 1fr;
-  }
-
   .page {
     padding: 22px 18px 32px;
   }

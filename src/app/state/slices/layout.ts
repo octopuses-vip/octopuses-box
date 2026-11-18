@@ -5,6 +5,7 @@ import { reviveRightPanelWidth } from "../preferences";
 
 export const createLayoutSlice: StoreSlice<
   | "view"
+  | "settingsCategory"
   | "activeProjectId"
   | "rightPanelOpen"
   | "rightPanelWidth"
@@ -15,6 +16,7 @@ export const createLayoutSlice: StoreSlice<
   | "terminalOpen"
   | "commandPaletteOpen"
   | "setView"
+  | "openSettings"
   | "setPlatform"
   | "setActiveProject"
   | "setRightPanelOpen"
@@ -27,6 +29,7 @@ export const createLayoutSlice: StoreSlice<
   | "setCommandPaletteOpen"
 > = (set, get) => ({
   view: "chats",
+  settingsCategory: "appearance",
 
   // 首次使用没有任何项目，当前项目为空串；添加项目时由界面写入
   activeProjectId: "",
@@ -47,7 +50,11 @@ export const createLayoutSlice: StoreSlice<
 
   commandPaletteOpen: false,
 
-  setView: (view) => set({ view }),
+  setView: (view) => set((state) => view === "settings" && state.view !== "settings"
+    ? { view, settingsCategory: "appearance" }
+    : { view }),
+
+  openSettings: (settingsCategory) => set({ view: "settings", settingsCategory }),
 
   setPlatform: (platform) => set({ platform }),
 

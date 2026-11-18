@@ -1,4 +1,4 @@
-//! Streamable HTTP transport, JSON/SSE responses and resource-bound OAuth credentials.
+//! Streamable HTTP transport, JSON/SSE responses and saved resource-bound credentials.
 use futures::StreamExt;
 use reqwest::{Client, Url};
 use serde_json::{json, Value};
@@ -24,17 +24,17 @@ async fn access_token(url: &str, client: &Client) -> Result<Option<String>, Stri
     let _guard = REFRESH.get_or_init(|| tokio::sync::Mutex::new(())).lock().await;
     let entry = credential(url)?;
     let Some(raw) = entry.get_password().ok() else { return Ok(None); };
-    let mut token: Value = serde_json::from_str(&raw).map_err(|_| "MCP 授权记录无效，请重新连接")?;
-    if token["resource"].as_str() != Some(validate_url(url)?.as_str()) { return Err("MCP 授权资源不匹配，请重新连接".into()); }
+    let mut token: Value = serde_json::from_str(&raw).map_err(|_| "MCP 已保存的授权记录无效")?;
+    if token["resource"].as_str() != Some(validate_url(url)?.as_str()) { return Err("MCP 已保存的授权资源不匹配".into()); }
     let now = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_millis() as u64;
     if token["expires_at"].as_u64().is_some_and(|at| at <= now + 30000) {
         let endpoint = validate_url(token["token_endpoint"].as_str().ok_or("令牌刷新地址缺失")?)?;
-        let refresh = token["refresh_token"].as_str().ok_or("MCP 授权已过期，请重新连接")?;
+        let refresh = token["refresh_token"].as_str().ok_or("MCP 已保存的授权已过期")?;
         let mut form = Url::parse("https://form.invalid").map_err(|e| e.to_string())?;
         form.query_pairs_mut().append_pair("grant_type", "refresh_token").append_pair("refresh_token", refresh)
             .append_pair("client_id", token["client_id"].as_str().ok_or("OAuth client ID 缺失")?).append_pair("resource", url);
         let response = client.post(endpoint).header("Content-Type", "application/x-www-form-urlencoded").body(form.query().unwrap_or("").to_string()).send().await.map_err(|e| e.to_string())?;
-        if !response.status().is_success() { return Err("MCP 授权刷新失败，请重新连接账号".into()); }
+        if !response.status().is_success() { return Err("MCP 已保存的授权刷新失败".into()); }
         let updated: Value = response.json().await.map_err(|e| e.to_string())?;
         if updated["token_type"].as_str().is_some_and(|s| !s.eq_ignore_ascii_case("bearer")) || !updated["access_token"].is_string() { return Err("不支持的 OAuth 令牌响应".into()); }
         token["access_token"] = updated["access_token"].clone();
@@ -67,7 +67,7 @@ impl Session {
         if let Some(token) = &self.token { request = request.bearer_auth(token); }
         if let Some(session) = &self.session { request = request.header("Mcp-Session-Id", session); }
         let response = request.send().await.map_err(|e| e.to_string())?;
-        if response.status().as_u16() == 401 { return Err("MCP 需要账号授权，请在插件连接中完成 OAuth".into()); }
+        if response.status().as_u16() == 401 { return Err("MCP 服务要求有效的身份凭据（HTTP 401）".into()); }
         if !response.status().is_success() { return Err(format!("MCP HTTP {}", response.status())); }
         if let Some(session) = response.headers().get("Mcp-Session-Id") { self.session = Some(session.to_str().map_err(|e| e.to_string())?.to_string()); }
         if notify { return Ok(Value::Null); }
@@ -108,31 +108,6 @@ async fn exchange(url: Url, client: Client, token: Option<String>, method: &str,
     }
     if let Some(id) = session.session { let mut close = session.client.delete(session.url).header("Mcp-Session-Id", id).header("MCP-Protocol-Version", session.version); if let Some(token) = session.token { close = close.bearer_auth(token); } let _ = close.send().await; }
     Ok(result)
-}
-#[tauri::command]
-/// Start browser-based PKCE through the local companion.
-pub async fn mcp_oauth_begin(app: tauri::AppHandle, cache_path: String, server_id: String, client_id: Option<String>) -> Result<Value, String> {
-    let server = crate::mcp::find_server(std::path::Path::new(&cache_path), &server_id)?; validate_url(&server.command)?;
-    crate::companion::companion_start(app, cache_path.clone(), false).await?;
-    crate::companion::companion_request(cache_path, "/oauth/begin".into(), Some(json!({ "resource": server.command, "clientId": client_id.filter(|v| !v.is_empty()) })), Some(false)).await
-}
-#[tauri::command]
-/// Move completed OAuth tokens into the OS keyring and erase transient copies.
-pub async fn mcp_oauth_status(cache_path: String, server_id: String, id: String) -> Result<Value, String> {
-    let value = crate::companion::companion_request(cache_path.clone(), "/oauth/status".into(), Some(json!({ "id": id })), Some(false)).await?;
-    if value["status"] == "complete" {
-        let server = crate::mcp::find_server(std::path::Path::new(&cache_path), &server_id)?;
-        let token = &value["token"];
-        if token["resource"].as_str() != Some(validate_url(&server.command)?.as_str()) { return Err("授权资源不匹配".into()); }
-        credential(&server.command)?.set_password(&token.to_string()).map_err(|e| e.to_string())?;
-        crate::companion::companion_request(cache_path, "/oauth/forget".into(), Some(json!({ "id": id })), Some(false)).await?;
-    }
-    Ok(json!({ "status": value["status"], "error": value["error"] }))
-}
-#[tauri::command]
-/// Remove the resource-bound account authorization from the OS keyring.
-pub fn mcp_oauth_disconnect(url: String) -> Result<(), String> {
-    match credential(&url)?.delete_credential() { Ok(()) | Err(keyring::Error::NoEntry) => Ok(()), Err(e) => Err(e.to_string()) }
 }
 #[cfg(test)] mod tests {
     use super::*;

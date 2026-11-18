@@ -40,10 +40,12 @@ export function ModelPicker() {
   }
 
   return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
+    <div ref={wrapRef} className="composer__picker">
       <button
         type="button"
         className="chip chip--active"
+        aria-haspopup="listbox"
+        aria-expanded={open}
         title={current.label}
         onClick={() => setOpen((prev) => !prev)}
       >

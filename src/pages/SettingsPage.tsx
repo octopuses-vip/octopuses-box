@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ComputerSettings } from "../computer/ComputerSettings";
+import { WindowsSandboxSetup } from "../components/WindowsSandboxSetup";
 import { WorkflowPreferences } from "../workflows/WorkflowPreferences";
 
 import { clearCache, initCacheDir, readCacheInfo, type CacheInfo } from "../app/desktop/cache";
@@ -12,6 +13,7 @@ import { supportsBackgroundAgents, supportsKernelSandbox } from "../app/platform
 import { useAppStore } from "../app/state";
 import { selectActiveThread } from "../app/storeSelectors";
 import { SCHEME_OPTIONS, THEME_PRESETS } from "../app/theme";
+import type { SettingsCategory } from "../app/types";
 import { DEFAULT_PERMISSION_MODE, permissionModeOption } from "../approval/permission";
 import { logCacheEvent } from "../cache/logger";
 import { useTheme } from "../hooks/useTheme";
@@ -47,13 +49,11 @@ const SETTINGS_CATEGORIES = [
   { id: "models", label: "模型与连接", description: "管理模型来源、连接地址和默认模型。" },
   { id: "permissions", label: "权限与安全", description: "设置命令审批、沙箱与自动批准规则。" },
   { id: "runtime", label: "运行与上下文", description: "调整运行上限、上下文压缩和后台定时。" },
-  { id: "workspace", label: "工作区扩展", description: "管理记忆、插件、浏览器与独立后台任务。" },
+  { id: "workspace", label: "工作区扩展", description: "管理记忆与浏览器。" },
   { id: "storage", label: "存储与缓存", description: "查看本地存储用量，管理缓存目录与临时文件。" },
   { id: "advanced", label: "高级与调试", description: "查看模型调用记录等调试信息。" },
   { id: "about", label: "账号与关于", description: "查看账号信息与应用版本。" },
-] as const;
-
-type SettingsCategory = typeof SETTINGS_CATEGORIES[number]["id"];
+] satisfies readonly { id: SettingsCategory; label: string; description: string }[];
 
 /** 只挂载当前分类；表单草稿留在父组件，切换分类不会丢失未保存内容。 */
 function SettingsGroup({ category, active, children }: {
@@ -66,7 +66,10 @@ function SettingsGroup({ category, active, children }: {
 
 /** 设置页：模型、工作区、缓存路径与账号信息 */
 export function SettingsPage() {
-  const [category, setCategory] = useState<SettingsCategory>("appearance");
+  const category = useAppStore((state) => state.settingsCategory);
+  const openSettings = useAppStore((state) => state.openSettings);
+  const pageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { pageRef.current?.scrollTo(0, 0); }, [category]);
   const currentCategory = SETTINGS_CATEGORIES.find((item) => item.id === category)!;
   // 订阅 platform 只为了让平台落定后重渲染，从而按平台隐藏不可用的能力区块
   useAppStore((state) => state.platform);
@@ -315,12 +318,12 @@ export function SettingsPage() {
             ? 0
             : ids.length - 1;
     const nextId = ids[next];
-    setCategory(nextId);
+    openSettings(nextId);
     document.getElementById(`settings-tab-${nextId}`)?.focus();
   };
 
   return (
-    <div className="page settings-page">
+    <div className="page settings-page" ref={pageRef}>
       <div className="page__inner">
         <header className="settings-header">
           <p className="page__desc">按分类调整你的工作环境。</p>
@@ -344,7 +347,7 @@ export function SettingsPage() {
                     ? "settings-tabs__tab settings-tabs__tab--active"
                     : "settings-tabs__tab"
                 }
-                onClick={() => setCategory(item.id)}
+                onClick={() => openSettings(item.id)}
               >
                 {item.label}
               </button>
@@ -657,7 +660,7 @@ export function SettingsPage() {
                   <span className="list-row__title">命令隔离（Seatbelt / bubblewrap / Docker）</span>
                   <span className="list-row__desc">
                     开启后模型触发的命令由系统内核强制限制写入范围：只允许写当前项目目录与工具链缓存，
-                    越界写入会被拦下并回填可读原因。系统未提供 sandbox-exec 时自动降级为不限制。
+                    越界写入会被拦下。所需隔离环境不可用时，命令会停止并提示原因。
                   </span>
                 </span>
                 <button
@@ -669,6 +672,7 @@ export function SettingsPage() {
                   {sandboxEnabled ? "已开启" : "已关闭"}
                 </button>
               </div>
+              <WindowsSandboxSetup />
               <div className="list-row">
                 <span className="list-row__main">
                   <span className="list-row__title">允许沙箱内命令联网</span>

@@ -5,11 +5,13 @@ import { useWorkflowUI } from "./store";
 import { WorkspacePanel } from "./WorkspacePanel";
 
 /** Keep the execution location beside the conversation title, with an anchored chooser. */
-export function ExecutionLocation({ label }: { label: string }) {
+export function ExecutionLocation({ path }: { path: string | null }) {
   const element = useRef<HTMLDivElement>(null); const { tab, open } = useWorkflowUI();
   const thread = useAppStore((s) => s.threads.find((t) => t.id === s.activeThreadId));
   const branch = useAppStore((s) => thread?.branch || s.gitInfo?.branch);
   const active = tab === "workspace";
+  const worktree = thread?.executionContext === "worktree";
+  const target = path ? branch || path.split(/[\\/]/).filter(Boolean).at(-1) : null;
   useEffect(() => {
     if (!active) return;
     const dismiss = (event: PointerEvent) => { if (event.target instanceof Node && !element.current?.contains(event.target)) open(null); };
@@ -18,9 +20,12 @@ export function ExecutionLocation({ label }: { label: string }) {
     return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
   }, [active, open]);
   return <div className="execution-location" ref={element}>
-    <button className="execution-location__trigger" aria-haspopup="dialog" aria-expanded={active} title={label} onClick={() => open(active ? null : "workspace")}>
-      <Icon name={thread?.executionContext === "worktree" ? "branch" : "folder"} size={13} /><span>{thread?.executionContext === "worktree" ? "Worktree" : "本地"}</span><span className="execution-location__branch">{branch || label.split(/[\\/]/).filter(Boolean).at(-1)}</span><Icon name="chevron-down" size={11} />
+    <button type="button" className="execution-location__trigger" aria-haspopup="dialog" aria-expanded={active} title={path ?? "运行位置"} onClick={() => open(active ? null : "workspace")}>
+      <Icon name={worktree ? "branch" : "folder"} size={13} />
+      <span>{worktree ? "Worktree" : "本地"}</span>
+      {target && <span className="execution-location__branch">{target}</span>}
+      <Icon name="chevron-down" size={11} />
     </button>
-    {active && <div className="execution-location__popover" role="dialog" aria-label="工作目录"><div className="popover-heading">运行位置</div><WorkspacePanel /><button className="location-footer" onClick={() => open("connections")}><Icon name="clock" size={14} />后台任务与远程主机<Icon name="chevron-right" size={12} /></button></div>}
+    {active && <div className="execution-location__popover" role="dialog" aria-label="工作目录"><div className="popover-heading">运行位置</div><WorkspacePanel /></div>}
   </div>;
 }

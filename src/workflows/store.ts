@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { useAppStore } from "../app/state";
-export type WorkflowTab = "workspace" | "review" | "memories" | "plugins" | "connections" | "browser";
-export type WorkflowDock = "pulls" | "tasks" | "browser";
-const DOCKS: Partial<Record<WorkflowTab, WorkflowDock>> = { review: "pulls", connections: "tasks", browser: "browser" };
+export type WorkflowTab = "workspace" | "review" | "memories" | "browser";
+export type WorkflowDock = "pulls" | "browser";
+const DOCKS: Partial<Record<WorkflowTab, WorkflowDock>> = { review: "pulls", browser: "browser" };
 interface WorkflowUI { tab: WorkflowTab | null; docks: WorkflowDock[]; open: (tab: WorkflowTab | null) => void; closeDock: (tab: WorkflowDock) => void }
 /** Contextual inspection stays in the right pane; only preferences use a settings dialog. */
 export const useWorkflowUI = create<WorkflowUI>((set) => ({

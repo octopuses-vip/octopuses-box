@@ -28,7 +28,7 @@ export interface ThemePreset {
 }
 
 export const THEME_PRESETS: readonly ThemePreset[] = [
-  { id: "graphite", label: "极简石墨", description: "中性灰阶，专注会话与工作内容" },
+  { id: "graphite", label: "石墨", description: "冷灰底色与钴蓝强调" },
   { id: "ocean", label: "海洋蓝", description: "冷调蓝，长时间阅读更轻松" },
   { id: "forest", label: "森林绿", description: "低饱和绿，偏自然护眼" },
   { id: "sunset", label: "暖阳橙", description: "暖调橙，傍晚使用更柔和" },

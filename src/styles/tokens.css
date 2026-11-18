@@ -21,21 +21,18 @@
   --panel-blur: 0px;
 
   /* 尺寸 */
-  /* 导航图标栏 + 项目/会话栏的总宽度 */
-  --sidebar-width: 296px;
-  --sidebar-rail-width: 56px;
+  --sidebar-width: 262px;
   --right-panel-width: 380px;
   /*
    * 中间栏最小可用宽度（开发者 Jan）：右栏分隔条最多只能把中间栏压到这个宽度。
    *
-   * 取 360 而不是更大，是被最小窗口尺寸反向约束的：窗口 minWidth 为 1024，
-   * 侧栏 296px 时右栏可用 362px；骨架会按容器宽度钳制右栏，避免挤破主区。
+   * 窗口 minWidth 为 1024，主区至少保留 360px。骨架会按容器宽度钳制右栏。
    */
   --main-min-width: 360px;
   /* 右栏分隔条宽度：右栏收起时该列宽为 0，分隔条自动不占位 */
   --splitter-width: 6px;
   --titlebar-height: 44px;
-  --composer-max-width: 820px;
+  --composer-max-width: 784px;
   /* 标题栏最左侧留白：macOS 让位给系统红绿灯按钮，非 macOS 只留一点呼吸空间 */
   --titlebar-leading: 78px;
 

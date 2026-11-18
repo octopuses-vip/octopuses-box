@@ -22,6 +22,7 @@ import type {
   RemoteModel,
   ReviewComment,
   RightTab,
+  SettingsCategory,
   SkillItem,
   SourceItem,
   SshHost,
@@ -327,6 +328,7 @@ export interface AppStore {
 
   /* ---------- 界面状态 ---------- */
   view: NavKey;
+  settingsCategory: SettingsCategory;
   activeProjectId: string;
   /** 当前平台；启动时先取 UA 推断值，随后由 `resolvePlatform()` 落定权威值（不持久化，每次重新探测） */
   platform: Platform;
@@ -420,6 +422,7 @@ export interface AppStore {
   commitChanges: (message: string) => Promise<void>;
   pushChanges: () => Promise<void>;
   setView: (view: NavKey) => void;
+  openSettings: (category: SettingsCategory) => void;
   setActiveProject: (id: string) => void;
   setRightPanelOpen: (open: boolean) => void;
   toggleRightPanel: () => void;
@@ -563,6 +566,7 @@ export interface AppStore {
   automationRuns: AutomationRun[];
   automationStatus: LoadStatus;
   automationError: string | null;
+  automationScheduleError: string | null;
   loadAutomations: () => Promise<void>;
   createAutomation: (input: {
     name: string;
@@ -585,7 +589,7 @@ export interface AppStore {
   ) => { threadId: string; runId: string; prompt: string } | null;
   updateAutomationRun: (
     runId: string,
-    patch: Partial<Pick<AutomationRun, "status" | "finishedAt" | "error" | "suggestions">>,
+    patch: Partial<Pick<AutomationRun, "status" | "finishedAt" | "error" | "result" | "suggestions">>,
   ) => void;
 
   /* ---------- 产物 ---------- */

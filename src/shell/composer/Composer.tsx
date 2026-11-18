@@ -10,7 +10,6 @@ import { subscribeDropSink, restoreFiles } from "../../app/fileDrop";
 import { pickFiles } from "../../app/desktop/system";
 import { isDesktopRuntime } from "../../app/desktop/runtime";
 import type { MessageAttachment, ThreadQueuedItem } from "../../app/types";
-import { APP_NAME } from "../../app/meta";
 import type { AgentSubmitMode } from "../../hooks/useAgentRun";
 import { Icon } from "../../components/Icon";
 import { useChoose } from "../../components/ConfirmProvider";
@@ -96,13 +95,16 @@ export function Composer({
   // 与工具栏可用宽度比较；放不下时把 Agent / 权限收进「更多」弹层，避免换行堆叠。
   const pickersRef = useRef<HTMLDivElement | null>(null);
   const probeRef = useRef<HTMLDivElement | null>(null);
-  const [pickersCollapsed, setPickersCollapsed] = useState(false);
+  const [pickerLayout, setPickerLayout] = useState<"full" | "collapsed" | "compact">("full");
   useLayoutEffect(() => {
     const group = pickersRef.current;
     const probe = probeRef.current;
     if (!group || !probe) return;
-    const check = () =>
-      setPickersCollapsed(probe.getBoundingClientRect().width > group.clientWidth + 1);
+    const check = () => {
+      const availableWidth = group.clientWidth;
+      if (availableWidth < 225) setPickerLayout("compact");
+      else setPickerLayout(probe.getBoundingClientRect().width > availableWidth + 1 ? "collapsed" : "full");
+    };
     check();
     const observer = new ResizeObserver(check);
     observer.observe(group);
@@ -512,7 +514,7 @@ export function Composer({
             rows={1}
             readOnly={submitting}
             aria-label="消息内容"
-            placeholder={`向 ${APP_NAME} 发送消息，输入 / 查看命令`}
+            placeholder="输入消息，按 / 查看命令"
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
@@ -525,10 +527,10 @@ export function Composer({
               <div className="composer__model-group">
                 <ModelPicker />
                 <ModePicker />
-                <EffortSlider />
+                {pickerLayout !== "compact" && <EffortSlider />}
               </div>
-              {pickersCollapsed ? (
-                <ComposerMorePicker />
+              {pickerLayout !== "full" ? (
+                <ComposerMorePicker includeEffort={pickerLayout === "compact"} />
               ) : (
                 <>
                   <AgentPicker />
@@ -587,16 +589,16 @@ export function Composer({
           </div>
         </div>
         <div className="composer-foot">
-          <span>{shortcutHint("⏎")} 发送</span>
+          <span className="composer-foot__shortcut"><kbd className="kbd">{shortcutHint("⏎")}</kbd> 发送</span>
           <span className="spacer" />
-          <span>
+          <span aria-live="polite">
             {isRunning
               ? queuedCount > 0
                 ? `运行中 · 排队 ${queuedCount}`
                 : "运行中"
               : queuedCount > 0
                 ? `排队 ${queuedCount}`
-                : "就绪"}
+                : null}
           </span>
         </div>
       </div>

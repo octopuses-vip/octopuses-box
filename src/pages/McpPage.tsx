@@ -300,7 +300,7 @@ export function McpPage() {
                 </div>
               </div>
 
-              {/* 启动配置：本地进程使用参数和环境变量；HTTP 服务在工作流面板进行 OAuth 授权 */}
+              {/* 本地进程使用启动参数和环境变量。 */}
               <div className="form__section">
                 <div className="form__section-title">启动配置</div>
                 <label className="form__row">

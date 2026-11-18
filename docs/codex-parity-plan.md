@@ -3,15 +3,16 @@
 范围：用户要求补齐此前列出的 12 项功能，并确认先完成客户端与本地配套服务；前端参照 Codex 的会话、侧栏与按需检查界面。实现与外部验收分开记录。
 
 - [x] Plan / Goal：只读计划工具、会话步骤卡、持续目标、预算与验收证据。
-- [x] 恢复与后台执行：原子请求日志、附件恢复、独立服务、重启后显式续接。
+- [x] 会话恢复：原子请求日志、附件恢复、重启后显式续接。
 - [x] PR / CI：列表、概览、检查、diff、失败日志、行内评论、创建与审查。
 - [x] Worktree / Handoff：运行位置菜单、创建/清理、保留源目录的交接。
-- [x] 插件 / MCP / OAuth：HTTPS 清单预览安装更新、事务回滚、远程 HTTP/SSE、PKCE 与凭据库。
+- [x] MCP：本地服务、远程 HTTP/SSE 和已保存的授权凭据。
 - [x] 长期记忆：个人/项目条目、编辑删除、会话使用/贡献控制、可选模型提炼。
 - [x] 语音：麦克风、连续分段 ASR、系统播报与打断，保留音视频大文件处理。
 - [x] 浏览器：独立预览、选区引用、配套扩展、授权标签页、读写工具与审批。
 - [x] 跨平台适配：Windows/Linux 沙箱、输入控制及后台调度，缺依赖时明确失败。
-- [x] 本地执行配套：独立 Agent、手机页面、远程主机配对、本地 Docker 仓库副本执行。
+- 独立后台任务、手机页面、远程任务主机配对与独立容器任务已移除。
+- 插件安装管理和新的 MCP 账号授权已移除，既有技能、服务配置和授权记录保留。
 - [x] 多目录项目：挂载、目录选择与逐次工具执行范围校验。
 - [x] Office：LibreOffice 版式、PDF.js 文字层、批注与编辑副本。
 
@@ -33,6 +34,6 @@
 
 真实 GitHub/OAuth 服务、浏览器扩展安装、麦克风录音、Docker 执行及 Windows/Linux 实机流程尚未端到端验收；Windows 虚拟机非 UI 脚本校验尝试超时。没有配置公网服务、域名与 TLS。
 
-语音采用分段 ASR 与系统 TTS；插件采用本项目清单协议；普通会话目标需要客户端运行；退出客户端后继续工作使用独立后台任务。Linux Wayland 输入控制不受支持，Windows 命令隔离采用 Linux 容器，Office 版式依赖 LibreOffice。
+语音采用分段 ASR 与系统 TTS。普通会话目标需要客户端运行。Linux Wayland 输入控制不受支持，Windows 命令隔离采用 Linux 容器，Office 版式依赖 LibreOffice。
 
 前端参考：[Introducing the Codex app](https://openai.com/index/introducing-the-codex-app/)、[Codex for (almost) everything](https://openai.com/index/codex-for-almost-everything/)。

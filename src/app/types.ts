@@ -402,7 +402,7 @@ export interface ProjectInput {
  * Review 仅在当前会话存在未解决评论时出现，「图片」仅在有图片产物时出现，
  * 「3D」仅在会话内有可预览的图纸（产物或 `imports/` 下的导入文件）时出现。
  */
-export type RightTab = "files" | "web" | "media" | "model" | "diff" | "review" | "sources" | "pulls" | "tasks" | "browser";
+export type RightTab = "files" | "web" | "media" | "model" | "diff" | "review" | "sources" | "pulls" | "browser";
 
 export type NavKey =
   | "newchat"
@@ -417,6 +417,16 @@ export type NavKey =
   | "projects"
   | "chats"
   | "settings";
+
+export type SettingsCategory =
+  | "appearance"
+  | "models"
+  | "permissions"
+  | "runtime"
+  | "workspace"
+  | "storage"
+  | "advanced"
+  | "about";
 
 export interface ModelOption {
   id: string;
@@ -719,6 +729,8 @@ export interface AutomationRun {
   status: "queued" | "running" | "success" | "failed" | "aborted";
   finishedAt: number | null;
   error: string | null;
+  /** A local automation can report its result without creating a chat. */
+  result?: string;
   /** 运行所在的会话 id，可跳转查看 */
   threadId: string;
   /** 运行结束后模型给出的 1–3 条后续建议；无建议为空数组 */

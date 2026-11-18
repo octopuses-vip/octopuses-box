@@ -121,10 +121,7 @@ export function nextRunAtForTask(
   from: number,
 ): number | null {
   const cron = task.cron?.trim() ?? "";
-  if (cron.length > 0) {
-    const planned = nextRunAt(cron, from);
-    if (planned !== null) return planned;
-  }
+  if (cron.length > 0) return nextRunAt(cron, from);
   if (task.intervalMinutes > 0) return from + task.intervalMinutes * MINUTE_MS;
   return null;
 }

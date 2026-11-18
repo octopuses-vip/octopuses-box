@@ -96,11 +96,24 @@ export function parseAutomationRuns(body: string | null): AutomationRun[] {
   }
 }
 
-/** 把自动化任务与运行记录写入缓存目录；未配置缓存目录时只在内存里生效 */
+const pendingWrites = new Map<string, Promise<void>>();
+
+/** 同一缓存目录的快照顺序落盘，避免较早的排队记录覆盖完成结果。 */
 export function persistAutomations(cachePath: string | null, tasks: Automation[], runs: AutomationRun[]): void {
   if (!cachePath) return;
-  void Promise.allSettled([
+  const write = () => Promise.allSettled([
     writeCacheFile(cachePath, "automations/tasks.json", JSON.stringify(tasks, null, 2)),
     writeCacheFile(cachePath, "automations/runs.json", JSON.stringify(runs, null, 2)),
-  ]);
+  ]).then(() => {});
+  const previous = pendingWrites.get(cachePath);
+  const pending = previous ? previous.then(write) : write();
+  pendingWrites.set(cachePath, pending);
+  void pending.then(() => {
+    if (pendingWrites.get(cachePath) === pending) pendingWrites.delete(cachePath);
+  });
+}
+
+/** 系统定时唤起的进程退出前，等本轮记录写完。 */
+export async function flushAutomationWrites(cachePath: string | null): Promise<void> {
+  if (cachePath) await pendingWrites.get(cachePath);
 }

@@ -125,7 +125,7 @@ fn mcp_root(cache_dir: &Path) -> Result<PathBuf, String> {
 }
 
 /// 读取服务配置；文件不存在或为空时视为没有服务
-pub fn load(cache_dir: &Path) -> Result<Vec<McpServer>, String> {
+fn load(cache_dir: &Path) -> Result<Vec<McpServer>, String> {
     let file = mcp_root(cache_dir)?.join(SERVERS_FILE);
     Ok(crate::json_store::read_json::<Vec<McpServer>>(&file)?.unwrap_or_default())
 }
@@ -182,7 +182,7 @@ pub fn delete(cache_dir: &Path, input: DeleteMcpServerInput) -> Result<Vec<McpSe
 }
 
 /// 按 id 取服务配置
-pub(crate) fn find_server(cache_dir: &Path, server_id: &str) -> Result<McpServer, String> {
+fn find_server(cache_dir: &Path, server_id: &str) -> Result<McpServer, String> {
     let id = validate_server_id(server_id)?;
     load(cache_dir)?
         .into_iter()

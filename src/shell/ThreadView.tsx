@@ -3,9 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAppStore } from "../app/state";
 import type { Message, MessageAttachment } from "../app/types";
+import { Icon } from "../components/Icon";
 import { ConversationStream } from "../conversation/ConversationStream";
 import { messagePlainText, messageQuote } from "../conversation/transcript";
 import { cancelQueuedRequest, useAgentRun, type AgentSubmitMode } from "../hooks/useAgentRun";
+import { NEW_CHAT_SUGGESTIONS } from "../mock/threads";
 import { Composer } from "./composer/Composer";
 import { TaskPanel } from "../tasks/TaskPanel";
 import { SessionHeader } from "./SessionHeader";
@@ -45,9 +47,14 @@ export function ThreadView() {
    * 输入框的焦点属于命令式状态，值一变就重新聚焦一次，因此用计数而非布尔量。
    */
   const [focusSignal, setFocusSignal] = useState(0);
+  const handleSuggestion = useCallback((value: string) => {
+    setPrompt(value);
+    setFocusSignal((current) => current + 1);
+  }, [setPrompt]);
   const threadRunState = useAppStore((state) => state.threadRunStates[activeThreadId]);
   const { run, stop } = useAgentRun();
   const isRunning = threadRunState?.status === "running";
+  const showWelcome = messages?.length === 0 && !isRunning;
 
   /*
    * 三个回调都用 useCallback 固定引用（开发者 Jan）：输入框每次按键都会改写本组件的 `prompt`，
@@ -95,31 +102,49 @@ export function ThreadView() {
   );
 
   return (
-    <div className="main-body">
+    <div className="main-body thread-view">
       <SessionHeader />
       {notice ? <div className="session-status" role="status">{notice}<button className="btn btn--ghost btn--sm" onClick={() => useAppStore.setState((s) => ({ sessionNotices: { ...s.sessionNotices, [activeThreadId]: undefined } }))}>关闭</button></div> : null}
-      {messages === undefined ? <div className="panel-empty" role={loadError ? "alert" : "status"}>{loadError ? <>读取会话失败：{loadError}<button className="btn btn--sm" onClick={() => void ensureLoaded(activeThreadId).catch(() => {})}>重试读取</button></> : "正在读取会话正文…"}</div> : <>
-      <ConversationStream
-        key={`stream:${activeThreadId}`}
-        onPromptChange={setPrompt}
-        onSubmit={handleSubmit}
-        onFollowUp={handleFollowUp}
-        onRegenerate={handleRegenerate}
-      />
-      <TaskPanel />
-      <Composer
-        key={`composer:${activeThreadId}`}
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        onSubmit={handleSubmit}
-        onStop={stop}
-        isRunning={isRunning}
-        queuedCount={threadRunState?.queuedCount ?? 0}
-        queuedItems={threadRunState?.queuedItems ?? []}
-        onCancelQueued={(requestId) => cancelQueuedRequest(activeThreadId, requestId)}
-        focusSignal={focusSignal}
-      />
-      </>}
+      {messages === undefined ? <div className="panel-empty" role={loadError ? "alert" : "status"}>{loadError ? <>读取会话失败：{loadError}<button className="btn btn--sm" onClick={() => void ensureLoaded(activeThreadId).catch(() => {})}>重试读取</button></> : "正在读取会话正文…"}</div> : (
+        <div className={showWelcome ? "thread-stage thread-stage--welcome" : "thread-stage"}>
+          {showWelcome ? (
+            <div className="welcome-intro">
+              <span className="welcome-intro__mark" aria-hidden="true"><Icon name="sparkles" size={22} /></span>
+              <h2>今天想完成什么？</h2>
+            </div>
+          ) : (
+            <ConversationStream
+              key={`stream:${activeThreadId}`}
+              onSubmit={handleSubmit}
+              onFollowUp={handleFollowUp}
+              onRegenerate={handleRegenerate}
+            />
+          )}
+          <TaskPanel />
+          <Composer
+            key={`composer:${activeThreadId}`}
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            onSubmit={handleSubmit}
+            onStop={stop}
+            isRunning={isRunning}
+            queuedCount={threadRunState?.queuedCount ?? 0}
+            queuedItems={threadRunState?.queuedItems ?? []}
+            onCancelQueued={(requestId) => cancelQueuedRequest(activeThreadId, requestId)}
+            focusSignal={focusSignal}
+          />
+          {showWelcome && (
+            <div className="welcome-prompts" role="group" aria-label="快捷提示">
+              {NEW_CHAT_SUGGESTIONS.map(({ icon, label, detail, prompt }) => (
+                <button type="button" key={label} title={detail} onClick={() => handleSuggestion(prompt)}>
+                  <Icon name={icon} size={16} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

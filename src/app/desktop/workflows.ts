@@ -7,3 +7,14 @@ export async function handoffWorkspace(sourcePath: string, targetPath: string): 
 export async function githubReview(workspacePath: string, request: { action: string; number?: number; body?: string; event?: string; title?: string; base?: string; runId?: number; path?: string; line?: number; commitId?: string }): Promise<unknown> {
   requireDesktopGit(); const { invoke } = await import("@tauri-apps/api/core"); return invoke("review_github", { workspacePath, request });
 }
+
+export interface GitHubConnectionStatus {
+  state: "connected" | "missing" | "login-required" | "error";
+  text: string;
+  loginCommand?: string;
+}
+
+/** Check the account even when no workspace has been selected. */
+export async function checkGitHubConnection(): Promise<GitHubConnectionStatus> {
+  return await githubReview("", { action: "status" }) as GitHubConnectionStatus;
+}

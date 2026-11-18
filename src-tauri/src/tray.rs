@@ -2,7 +2,7 @@
 //!
 //! 客户端带自动化调度，关掉窗口不应该让定时任务停摆，因此这里拦截关窗请求改为隐藏窗口，
 //! 并在托盘区常驻一个图标作为恢复入口：左键单击恢复主界面，右键菜单提供
-//! 「显示主界面 / 检查更新 / 退出」。真正的退出只从托盘菜单走，避免用户误关导致后台任务被中断。
+//! 「显示主界面 / 检查更新 / 退出」。真正的退出只从托盘菜单走，避免关闭窗口时中断会话和自动化。
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -27,7 +27,7 @@ const EVENT_CHECK_UPDATE: &str = "tray-check-update";
 ///
 /// 窗口可能是被隐藏的、也可能处于最小化状态，两个状态各恢复一半都看不到窗口：
 /// 先 `unminimize` 再 `show`，最后 `set_focus` 才能保证从托盘唤回时窗口真的出现在眼前。
-fn restore_main_window<R: Runtime>(app: &AppHandle<R>) {
+pub(crate) fn restore_main_window<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return;
     };

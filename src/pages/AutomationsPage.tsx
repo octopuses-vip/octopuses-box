@@ -2,10 +2,14 @@ import { useState } from "react";
 
 import { useAppStore } from "../app/state";
 import { APP_NAME } from "../app/meta";
-import type { AgentItem, Automation, AutomationSuggestion, Project } from "../app/types";
-import { describeSchedule } from "../automations/cron";
+import type { AgentItem, Automation, AutomationRun, AutomationSuggestion, Project } from "../app/types";
+import { describeSchedule, parseCron } from "../automations/cron";
+import { useAutomationRunner } from "../automations/useAutomationRunner";
 import { Icon } from "../components/Icon";
-import { useAgentRun } from "../hooks/useAgentRun";
+
+const RUN_STATUS: Record<AutomationRun["status"], string> = {
+  queued: "排队中", running: "运行中", success: "已完成", failed: "失败", aborted: "已中断",
+};
 
 /** 触发间隔预设；0 表示只手动触发，不参与定时检查 */
 const INTERVAL_PRESETS: { value: number; label: string }[] = [
@@ -38,16 +42,16 @@ export function AutomationsPage() {
   const automations = useAppStore((state) => state.automations);
   const automationRuns = useAppStore((state) => state.automationRuns);
   const automationError = useAppStore((state) => state.automationError);
+  const scheduleError = useAppStore((state) => state.automationScheduleError);
   const cachePath = useAppStore((state) => state.cachePath);
   const createAutomation = useAppStore((state) => state.createAutomation);
   const toggleAutomation = useAppStore((state) => state.toggleAutomation);
   const removeAutomation = useAppStore((state) => state.removeAutomation);
-  const startAutomationRun = useAppStore((state) => state.startAutomationRun);
   const openThread = useAppStore((state) => state.openThread);
   const projects = useAppStore((state) => state.projects);
   const agents = useAppStore((state) => state.agents);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
-  const { run } = useAgentRun();
+  const runAutomation = useAutomationRunner();
 
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
@@ -63,17 +67,14 @@ export function AutomationsPage() {
   const [agentId, setAgentId] = useState("");
 
   const enabledCount = automations.filter((task) => task.enabled).length;
-  const canSubmit = name.trim().length > 0 && prompt.trim().length > 0 && projectId.length > 0;
+  const invalidCron = cron.trim().length > 0 && !parseCron(cron);
+  const canSubmit = name.trim().length > 0 && prompt.trim().length > 0 && projectId.length > 0 && !invalidCron;
 
 /** 函数级说明（开发者 Jan）：执行 handleRun 的单一职责，并返回可供调用方继续处理的结果。 */
-  const handleRun = (automationId: string) => {
-    const request = startAutomationRun(automationId, "manual");
-    if (!request) return;
-    run(request.threadId, request.prompt, [], {
-      mode: "queue",
-      source: "automation",
-      automationRunId: request.runId,
-    });
+  const handleRun = async (automationId: string) => {
+    if (await runAutomation(automationId, "manual") === null) {
+      useAppStore.getState().showNotice("未能启动任务，请确认会话已恢复且没有同一任务正在运行。");
+    }
   };
 
 /** 函数级说明（开发者 Jan）：执行 resetForm 的单一职责，并返回可供调用方继续处理的结果。 */
@@ -108,7 +109,7 @@ export function AutomationsPage() {
     <div className="page">
       <div className="page__inner">
         <p className="page__desc">
-          让 {APP_NAME} 按计划自动执行任务：到点后复用任务自己的会话运行提示词，结果写入对应项目。
+          {APP_NAME} 按计划触发任务。普通任务复用会话，本地向量索引的结果直接显示在运行记录。
           任务与运行记录存放在缓存目录
           {cachePath ? ` ${cachePath}/automations/` : "（尚未配置缓存目录）"}；
           应用开着时由应用内调度器计时，应用关闭后由注册到系统的后台定时项到点重新唤起执行，
@@ -120,6 +121,7 @@ export function AutomationsPage() {
             <div className="card__desc">读取任务失败：{automationError}</div>
           </div>
         ) : null}
+        {scheduleError && <p className="inline-error" role="alert">{scheduleError}</p>}
 
         <div className="page__section">
           <div className="page__section-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -214,6 +216,7 @@ export function AutomationsPage() {
                 填了 cron 时以 cron 为准（5 段：分 时 日 月 周）；「每 N 分钟」与「每天 / 每周定点」
                 可在应用关闭后由系统唤起，其余复杂表达式只在应用运行时触发。
               </p>
+              {invalidCron && <p className="inline-error">cron 格式无效，请填写 5 段的时间表达式。</p>}
               <div className="login__actions">
                 <button
                   type="button"
@@ -254,7 +257,7 @@ export function AutomationsPage() {
                     (runItem.status === "queued" || runItem.status === "running"),
                 )}
                 onToggle={() => toggleAutomation(task.id)}
-                onRun={() => handleRun(task.id)}
+                onRun={() => void handleRun(task.id)}
                 onRemove={() => removeAutomation(task.id)}
               />
             ))
@@ -265,29 +268,25 @@ export function AutomationsPage() {
           <div className="page__section-label">运行记录 {automationRuns.length}</div>
           {automationRuns.length === 0 ? (
             <div className="card">
-              <div className="card__desc">还没有运行记录。任务运行后会在这里留一条，点击可跳到对应会话。</div>
+              <div className="card__desc">任务运行后会在这里显示触发方式、完成时间和结果。</div>
             </div>
           ) : (
             automationRuns.map((run) => (
               <div className="card" key={run.id}>
-                <button
-                  type="button"
-                  className="list-row list-row--action"
-                  title="打开运行会话"
-                  onClick={() => openThread(run.threadId)}
-                >
+                <div className="list-row">
                   <Icon name={run.trigger === "manual" ? "arrow-up" : "clock"} size={15} />
                   <span className="list-row__main">
                     <span className="list-row__title">{run.name}</span>
                     <span className="list-row__desc">
-                      {run.trigger === "manual" ? "手动触发" : "定时触发"} · {run.status} · 开始{" "}
+                      {run.trigger === "manual" ? "手动触发" : "定时触发"} · {RUN_STATUS[run.status] ?? run.status} · 开始{" "}
                       {formatTime(run.startedAt)}
                       {run.finishedAt ? ` · 结束 ${formatTime(run.finishedAt)}` : ""}
+                      {run.result ? ` · ${run.result}` : ""}
                       {run.error ? ` · ${run.error}` : ""}
                     </span>
                   </span>
-                  <Icon name="chevron-right" size={11} />
-                </button>
+                  {run.threadId && <button type="button" className="btn btn--sm" onClick={() => openThread(run.threadId)}>打开会话</button>}
+                </div>
                 {run.suggestions.length > 0 ? (
                   <div
                     className="list-row"

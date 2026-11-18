@@ -208,7 +208,7 @@ pub fn wake_task_id() -> Option<String> {
 }
 
 /// `wake_task_id` 的纯函数形态，便于单测
-fn wake_from_args<I: Iterator<Item = String>>(mut args: I) -> Option<String> {
+pub(crate) fn wake_from_args<I: Iterator<Item = String>>(mut args: I) -> Option<String> {
     while let Some(arg) = args.next() {
         if arg == RUN_ARG {
             return args.next();
@@ -275,6 +275,13 @@ fn bootstrap(uid: &str, plist: &Path) -> Result<(), String> {
     ))
 }
 
+fn is_loaded(uid: &str, label: &str) -> bool {
+    Command::new("launchctl")
+        .args(["print", &format!("gui/{uid}/{label}")])
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
 /// 启用一个已装载的定时项（历史上被 `disable` 过时需要）
 fn enable(uid: &str, label: &str) -> Result<(), String> {
     let target = format!("gui/{uid}/{label}");
@@ -321,7 +328,7 @@ fn list_installed() -> Result<Vec<AgentInfo>, String> {
     Ok(out)
 }
 
-/// 注册一批后台定时项；对同一任务重复调用是幂等的（先卸载再覆盖写入并重新装载）。
+/// 注册一批后台定时项。配置相同且已装载时保留现有计时。
 ///
 /// 只有带调度（间隔或日历）的规格才会被注册；调用方需另行 [prune] 掉不再需要的任务。
 ///
@@ -343,12 +350,16 @@ pub fn launch_agent_install(specs: Vec<AgentSpec>) -> Result<Vec<AgentInfo>, Str
         }
         let label = label_for(&spec.id);
         let path = dir.join(format!("{label}.plist"));
-        // 幂等：先卸载同名项（可能指向旧的可执行文件路径），再覆盖写入并重新装载
-        let _ = bootout(&uid, &label);
-        fs::write(&path, plist_body(&exe, &spec.id, &label, spec))
-            .map_err(|error| format!("写入 plist 失败（{}）：{error}", path.display()))?;
-        bootstrap(&uid, &path)?;
-        let _ = enable(&uid, &label);
+        let preferred = plist_body(&exe, &spec.id, &label, spec);
+        let unchanged = fs::read_to_string(&path).is_ok_and(|body| body == preferred);
+        let loaded = is_loaded(&uid, &label);
+        if !unchanged {
+            if loaded { bootout(&uid, &label)?; }
+            fs::write(&path, preferred)
+                .map_err(|error| format!("写入 plist 失败（{}）：{error}", path.display()))?;
+        }
+        enable(&uid, &label).map_err(|error| format!("启用系统定时项失败：{error}"))?;
+        if !loaded || !unchanged { bootstrap(&uid, &path)?; }
         installed.push(AgentInfo {
             task_id: spec.id.clone(),
             label,

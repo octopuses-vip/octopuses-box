@@ -103,6 +103,7 @@ export function ThreadList({
               <button
                 type="button"
                 className="thread-item__open"
+                aria-current={thread.id === activeThreadId ? "true" : undefined}
                 title={thread.title}
                 onClick={() => onSelect(thread.id)}
               >

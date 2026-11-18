@@ -29,7 +29,7 @@ export function AgentPicker() {
   const current = agents.find((agent) => agent.id === threadAgentId) ?? null;
 
   return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
+    <div ref={wrapRef} className="composer__picker">
       <button
         type="button"
         className={current ? "chip chip--active" : "chip"}

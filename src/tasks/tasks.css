@@ -49,4 +49,4 @@
 .mode-picker__menu small { font-size: 11px; color: var(--text-3); }
 .menu-divider { height: 1px; margin: 4px 6px; background: var(--border); }
 @container main (max-width: 720px) { .task-status { width: calc(100% - 32px); } }
-@container main (max-width: 460px) { .composer-mode > span { display: none; } .goal-strip__title > span { display: none; } .goal-editor__budget > span { display: none; } }
+@container main (max-width: 460px) { .goal-strip__title > span { display: none; } .goal-editor__budget > span { display: none; } }

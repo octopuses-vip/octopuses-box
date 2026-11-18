@@ -22,7 +22,6 @@ mod launch_agent;
 mod background_cross;
 mod mcp;
 mod mcp_http;
-mod plugins;
 mod office;
 mod model_proxy;
 mod video;
@@ -66,7 +65,16 @@ fn session_exit_ready(app: tauri::AppHandle) {
 /// 所有后端命令都必须在这里注册，漏注册的命令在运行时才会以「命令未找到」暴露，
 /// 因此这里也是「后端对外提供哪些能力」的唯一清单。
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
+        if launch_agent::wake_from_args(args.into_iter().skip(1)).is_none() {
+            tray::restore_main_window(app);
+        } else {
+            trace::write("定时唤起遇到已运行客户端，由应用内调度器处理");
+        }
+    }));
+    builder
         .manage(workspace::WorkspaceState::default())
         .manage(pty::PtyManager::default())
         .manage(control::CdpState::default())
@@ -76,21 +84,14 @@ pub fn run() {
         .manage(audio_source::AudioSourcesState::default())
         .manage(knowledge::KnowledgeState::default())
         .setup(|app| {
-            use tauri::{Emitter, Manager};
+            use tauri::Manager;
             // 埋点：先记下启动现场，之后无论进程怎么消失，日志里都留有「它确实启动过」的证据
             trace::write(&describe_startup());
             let handle = app.handle().clone();
             match launch_agent::wake_task_id() {
-                // 被系统定时项唤起：记下待执行任务并广播。前端可能还没注册监听，
-                // 因此同时留一份在托管状态里，由 automation_take_wake 兜底取回。
+                // 等前端恢复会话、计划和模型配置后主动领取，避免初始化时丢失事件。
                 Some(task_id) => {
                     trace::write(&format!("启动参数指定待执行任务：{task_id}"));
-                    let _ = handle.emit(
-                        "automation-wake",
-                        automation::AutomationWakeEvent {
-                            automation_id: task_id.clone(),
-                        },
-                    );
                     automation::mark_wake(&handle, task_id);
                 }
                 // 正常启动：清掉指向旧可执行文件路径的残留定时项，随后由前端用当前路径重新注册
@@ -115,7 +116,7 @@ pub fn run() {
             companion::prepare_container,
             companion::companion_start,
             companion::companion_request,
-            companion::companion_connect,
+            companion::companion_retire_legacy,
             session_exit_listening,
             session_exit_ready,
             knowledge::knowledge_model_status,
@@ -179,13 +180,6 @@ pub fn run() {
             updater::update_download_and_install,
             updater::update_take_result,
             office::office_render,
-            plugins::plugins_list,
-            plugins::plugins_fetch,
-            plugins::plugins_install,
-            plugins::plugins_uninstall,
-            mcp_http::mcp_oauth_begin,
-            mcp_http::mcp_oauth_status,
-            mcp_http::mcp_oauth_disconnect,
             mcp::mcp_list_servers,
             mcp::mcp_save_server,
             mcp::mcp_delete_server,
@@ -334,7 +328,10 @@ fn handle_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
                 let _ = app.emit("session-exit-requested", ());
             }
         }
-        RunEvent::Exit => trace::write("进程退出 Exit"),
+        RunEvent::Exit => {
+            companion::stop_children();
+            trace::write("进程退出 Exit");
+        }
         _ => {}
     }
 }
