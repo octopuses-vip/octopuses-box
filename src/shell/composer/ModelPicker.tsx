@@ -7,8 +7,7 @@ import { useClickOutside } from "../../hooks/useClickOutside";
 /**
  * 输入框的模型选择器（开发者 Jan）：点开下拉切换模型，点击外部收起。
  *
- * 可选模型完全由后台下发；只有一个模型（或还没加载出来）时退化为不可点的标签，
- * 免得给出一个点开也没得选的下拉。
+ * 只有一个可用对话模型或列表为空时，显示标签。
  */
 export function ModelPicker() {
   const model = useAppStore((state) => state.model);
@@ -26,14 +25,14 @@ export function ModelPicker() {
 
   const current = modelOptions.find((option) => option.id === model) ?? modelOptions[0];
 
-  // 可用模型完全由后台下发，只有一个时没有可切换的对象，直接把模型名显示出来
   if (modelOptions.length <= 1) {
     const failed = modelConfigStatus === "error";
+    const unavailable = modelConfigStatus === "ready";
     return (
       <span className="chip" title={current?.label ?? modelConfigError ?? undefined}>
         <Icon name={failed ? "alert" : "sparkles"} size={12} />
         <span className="chip__label">
-          {current?.label ?? (failed ? "模型配置有误" : "模型加载中…")}
+          {current?.label ?? (failed ? "模型配置有误" : unavailable ? "无可用对话模型" : "模型加载中…")}
         </span>
       </span>
     );

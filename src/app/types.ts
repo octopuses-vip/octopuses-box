@@ -439,8 +439,7 @@ export interface ModelOption {
 /**
  * 后台下发给当前登录用户的模型（`GET /api/client/models` 的元素）。
  *
- * 列表由服务端按「已授权 + 已启用」过滤并按 id 升序返回，客户端不做二次筛选，
- * 管理台取消勾选后模型会在下次拉取时自然消失。
+ * 列表由服务端按「已授权 + 已启用」过滤并按 id 升序返回，客户端据此派生不同用途的模型选项。
  */
 export interface RemoteModel {
   /** 模型 ID */
@@ -457,6 +456,8 @@ export interface RemoteModel {
   apiKey: string;
   /** 模型描述，可能为空字符串 */
   description: string;
+  /** Whether the model accepts chat completion requests. */
+  supportsChat?: boolean;
   /**
    * 该模型是否支持图片输入。
    *

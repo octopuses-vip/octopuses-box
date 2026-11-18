@@ -199,6 +199,9 @@ pub struct RemoteModel {
     /// 模型描述，可能为空字符串
     #[serde(default)]
     pub description: String,
+    /// Explicit chat capability for catalogs that also contain dedicated models.
+    #[serde(default, alias = "supports_chat")]
+    pub supports_chat: Option<bool>,
     /// 该模型是否支持图片输入。
     ///
     /// 用 `Option` 而非 `bool`：老版本后台不返回此字段，`None` 表示「后台没有声明」，
@@ -720,6 +723,17 @@ mod tests {
         assert_eq!(models[0].base_url, "https://api.openai.com/v1");
         assert_eq!(models[0].api_key, "");
         assert_eq!(models[0].description, "通用多模态大模型");
+        assert_eq!(models[0].supports_chat, None);
+    }
+
+    #[test]
+    fn remote_model_preserves_explicit_chat_capability() {
+        let model: RemoteModel = serde_json::from_str(
+            r#"{"id":1,"code":"video-endpoint","name":"视频模型","baseUrl":"https://api.example/v1","supports_chat":false}"#,
+        )
+        .unwrap();
+        assert_eq!(model.supports_chat, Some(false));
+        assert_eq!(serde_json::to_value(model).unwrap()["supportsChat"], false);
     }
 
     #[test]

@@ -561,15 +561,16 @@ export function SettingsPage() {
         ) : null}
 
         <div className="page__section">
-          <div className="page__section-label">默认模型</div>
+          <div className="page__section-label">默认对话模型</div>
           <Segmented
-            ariaLabel="默认模型"
+            ariaLabel="默认对话模型"
             options={modelOptions.map((option) => ({ value: option.id, label: option.label }))}
             value={model}
             onChange={setModel}
           />
           <p className="page__desc" style={{ marginTop: 8 }}>
-            {modelOptions.find((option) => option.id === model)?.description}
+            {modelOptions.find((option) => option.id === model)?.description
+              ?? (modelConfigStatus === "ready" ? "暂无可用对话模型。" : null)}
           </p>
           <div className="list-row">
             <span className="list-row__main">

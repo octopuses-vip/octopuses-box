@@ -3,8 +3,8 @@ import type { StoreSlice } from "../slice";
 import { LOCAL_MODELS_FILE, parseLocalModels } from "../../../model/localModels";
 import { readCacheFile } from "../../desktop/cache";
 import { fetchRemoteModels, parseApiError, NETWORK_ERROR_CODE } from "../../desktop/server";
-import { connectionFromModel } from "../../storeSelectors";
-import { applyLoadedModels, toModelOption } from "../models";
+import { selectChatModelConnectionByCode } from "../../storeSelectors";
+import { applyLoadedModels } from "../models";
 
 export const createModelsSlice: StoreSlice<
   | "model"
@@ -25,11 +25,17 @@ export const createModelsSlice: StoreSlice<
   model: "",
 
   videoModelCode: "",
-  setVideoModelCode: (videoModelCode) => set({ videoModelCode }),
+  setVideoModelCode: (videoModelCode) => set((state) => ({
+    videoModelCode,
+    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { videoModelCode, audioModelCode: state.audioModelCode }),
+  })),
 
   audioModelCode: "",
   /** Retain an explicit choice without guessing capability from model names. */
-  setAudioModelCode: (audioModelCode) => set({ audioModelCode }),
+  setAudioModelCode: (audioModelCode) => set((state) => ({
+    audioModelCode,
+    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { videoModelCode: state.videoModelCode, audioModelCode }),
+  })),
 
   modelOptions: [],
 
@@ -82,8 +88,9 @@ export const createModelsSlice: StoreSlice<
           });
           return;
         }
+        const state = get();
         set({
-          ...applyLoadedModels(models, get().model, get().imageInputEnabled),
+          ...applyLoadedModels(models, state.model, state.imageInputEnabled, state),
           modelConfigStatus: "ready",
         });
       } catch (error) {
@@ -108,9 +115,9 @@ export const createModelsSlice: StoreSlice<
     try {
       const models = await fetchRemoteModels(endpoint, token);
       // 收尾与本地分支共用 `applyLoadedModels`：保留原选中模型，否则落到列表首项
-      const manualImageInput = get().imageInputEnabled;
+      const state = get();
       set({
-        ...applyLoadedModels(models, get().model, manualImageInput),
+        ...applyLoadedModels(models, state.model, state.imageInputEnabled, state),
         modelConfigStatus: "ready",
       });
     } catch (error) {
@@ -138,17 +145,12 @@ export const createModelsSlice: StoreSlice<
          * 切换模型：连同 `modelConfig` 一起重算。
          *
          * 每个授权模型自带 `baseUrl` / `apiKey`，不重算的话切换后仍会用上一个模型的地址与密钥。
-         * 传入的 id 不在授权列表里时（例如列表被后台收窄）不改变当前连接，避免连到未知地址。
+         * 仅接受当前账号可用的对话模型。
          */
   setModel: (model) =>
     set((state) => {
-      const selected = state.remoteModels.find((item) => item.code === model);
-      return {
-        model,
-        ...(selected
-          ? { modelConfig: connectionFromModel(selected, state.imageInputEnabled) }
-          : {}),
-      };
+      const modelConfig = selectChatModelConnectionByCode(state, model);
+      return modelConfig ? { model, modelConfig } : state;
     }),
 
   /**
@@ -159,16 +161,8 @@ export const createModelsSlice: StoreSlice<
          * 后台已下发能力的模型不受影响（`resolveSupportsImages` 会优先取接口值）。
          */
   setImageInputEnabled: (imageInputEnabled) =>
-    set((state) => {
-      const selected = state.remoteModels.find((item) => item.code === state.model);
-      return {
-        imageInputEnabled,
-        modelOptions: state.remoteModels.map((model) =>
-          toModelOption(model, imageInputEnabled),
-        ),
-        modelConfig: selected
-          ? connectionFromModel(selected, imageInputEnabled)
-          : state.modelConfig,
-      };
-    })
+    set((state) => ({
+      imageInputEnabled,
+      ...applyLoadedModels(state.remoteModels, state.model, imageInputEnabled, state),
+    }))
 });

@@ -303,7 +303,7 @@ pnpm tauri build --bundles app  # 仅打包 macOS .app
 ]
 ```
 
-`baseUrl` 必须是绝对的 `http://` 或 `https://` 地址，`code` 不能重复。`models.json` 可能包含模型密钥，请勿提交到 Git 或公开分享。
+`baseUrl` 必须是绝对的 `http://` 或 `https://` 地址，`code` 不能重复。专用模型可填写 `"supportsChat": false`，同时支持对话与专用接口的模型可填写 `"supportsChat": true`。`models.json` 可能包含模型密钥，请勿提交到 Git 或公开分享。
 
 ### 缓存目录
 

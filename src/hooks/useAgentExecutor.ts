@@ -13,7 +13,7 @@ import {
 import { nextId } from "../app/ids";
 import { artifactGitignoreEntry, effectiveArtifactDir } from "../app/state/artifacts";
 import { effectiveWorkspacePath } from "../app/state/workspace";
-import { filterDisabledTools, selectAgentById, selectModelConnectionByCode, selectProjectScopedMcpServers, selectProjectScopedSkills, selectProjectScopedSshHosts, selectThreadContextEntries } from "../app/storeSelectors";
+import { filterDisabledTools, selectAgentById, selectChatModelConnectionByCode, selectModelConnectionByCode, selectProjectScopedMcpServers, selectProjectScopedSkills, selectProjectScopedSshHosts, selectThreadContextEntries } from "../app/storeSelectors";
 import { useAppStore } from "../app/state";
 import type {
   ExecutionDetails,
@@ -134,9 +134,9 @@ export function createAgentExecutor(
       const controller = runSlot(threadId).abort!;
       const historyMessages = regenerateFrom ? prepareRegeneration(store.messages[threadId] ?? [], regenerateFrom).prefix : store.messages[threadId];
       const agent = selectAgentById(store, thread?.agentId ?? null);
-      // 模型收口：Agent 指定了模型且命中授权列表时才覆写，否则沿用会话当前连接
+      // Agent 指定了可用的对话模型时覆写，否则沿用会话当前连接。
       const requestedModel = agent?.model || store.modelConfig?.modelId || null;
-      const agentConnection = agent?.model ? selectModelConnectionByCode(store, agent.model) : null;
+      const agentConnection = agent?.model ? selectChatModelConnectionByCode(store, agent.model) : null;
       const config = agentConnection ?? store.modelConfig;
       const fallbackReason = agent?.model && !agentConnection
         ? "Agent 指定模型不可用，回退到会话模型"

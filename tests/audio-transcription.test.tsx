@@ -119,7 +119,9 @@ test("转写作为普通文字附件完整进入对话，等待完成后才能�
 });
 
 test("音频模型仅持久化选择，旧设置升级默认不配置音频服务", () => {
-  let state = createModelsSlice((patch) => { Object.assign(state, patch); }, () => state as AppStore, {} as never);
+  let state = createModelsSlice((patch) => {
+    Object.assign(state, typeof patch === "function" ? patch(state as AppStore) : patch);
+  }, () => state as AppStore, {} as never);
   assert.equal(state.audioModelCode, "");
   state.setAudioModelCode("asr");
   const persisted = selectPersistedState(state as AppStore);

@@ -5,7 +5,7 @@ export function transcriptionCapability(model: RemoteModel): "supported" | "unsu
   if (typeof model.supportsAudioTranscription === "boolean") {
     return model.supportsAudioTranscription ? "supported" : "unsupported";
   }
-  const code = model.code.toLowerCase();
+  const code = model.code.trim().toLowerCase().split("/").at(-1) ?? "";
   if (/^(gpt-transcribe|gpt-4o(?:-mini)?-transcribe|whisper)(?:$|-)/.test(code)) return "supported";
   if (/^(gpt-\d+(?:\.\d+)*[a-z]?|o[1-9])(?:$|-)/.test(code)) return "unsupported";
   return "unverified";

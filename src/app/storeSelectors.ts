@@ -4,6 +4,7 @@ import type { AgentItem, ContextEntry, Message, McpServer, RemoteModel, SkillIte
 import type { ModelConnection } from "./desktop/connectionTypes";
 import type { ChatTool } from "../model/client";
 import { resolveSupportsImages } from "../model/visionCapability";
+import { supportsChat } from "../model/chatCapability";
 
 /**
  * 由选中的授权模型派生当前连接信息（`modelConfig`）。
@@ -126,12 +127,7 @@ export function selectAgentById(state: AppStore, id: string | null): AgentItem |
   return state.agents.find((agent) => agent.id === id) ?? null;
 }
 
-/**
- * 按模型 code 派生连接信息（开发者 Jan）；没有对应授权模型时返回 null。
- *
- * Agent 指定了模型时由运行收口用它覆写会话连接：命中授权列表才切换，找不到就退回会话原连接，
- * 避免绑定了一个已被下线的模型后整轮运行无从发起。
- */
+/** 按模型 code 派生授权连接，供视频等专用工具使用。 */
 export function selectModelConnectionByCode(
   state: AppStore,
   code: string | null | undefined,
@@ -139,6 +135,12 @@ export function selectModelConnectionByCode(
   if (!code) return null;
   const model = state.remoteModels.find((item) => item.code === code);
   return model ? connectionFromModel(model, state.imageInputEnabled) : null;
+}
+
+/** 对话与 Agent 只接受可发起聊天请求的模型。 */
+export function selectChatModelConnectionByCode(state: AppStore, code: string): ModelConnection | null {
+  const model = state.remoteModels.find((item) => item.code === code);
+  return model && supportsChat(model, state) ? connectionFromModel(model, state.imageInputEnabled) : null;
 }
 
 /** 已启用的 MCP 服务：其工具会被包装成模型可调用的函数 */

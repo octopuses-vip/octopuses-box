@@ -1,10 +1,11 @@
 /** 状态辅助层：models。不依赖 Store 实例，调用方显式传入上下文。 */
 import { resolveSupportsImages } from "../../model/visionCapability";
+import { supportsChat, type SpecializedModelSelection } from "../../model/chatCapability";
 import { connectionFromModel } from "../storeSelectors";
 import { type RemoteModel, type ModelOption } from "../types";
 
 /** 将远程模型转换为界面选项，集中处理展示名和视觉能力（开发者 Jan）。 */
-export function toModelOption(model: RemoteModel, manualImageInput: boolean): ModelOption {
+function toModelOption(model: RemoteModel, manualImageInput: boolean): ModelOption {
   return {
     id: model.code,
     label: model.name.trim() || model.code,
@@ -17,19 +18,20 @@ export function toModelOption(model: RemoteModel, manualImageInput: boolean): Mo
 /**
  * 把一份模型列表落成界面要用的四件套（开发者 Jan）。
  *
- * 远程下发与本地 `models.json` 走的是同一段收尾逻辑：保留用户原来选中的模型
- * （还能用就沿用），否则落到列表首项；列表为空时不设默认值，由界面呈现
- * 「无可用模型」而不是留一个不存在的 id。两条源共用一处，避免本地分支悄悄少算一项。
+ * 保留已授权模型供各工具使用，并从对话模型中选取当前连接。
+ * 当前模型不可用时选第一项，对话列表为空时清空当前连接。
  */
 export function applyLoadedModels(
   models: RemoteModel[],
   currentCode: string,
   manualImageInput: boolean,
+  specializedModels: SpecializedModelSelection,
 ) {
-  const selected = models.find((model) => model.code === currentCode) ?? models[0] ?? null;
+  const chatModels = models.filter((model) => supportsChat(model, specializedModels));
+  const selected = chatModels.find((model) => model.code === currentCode) ?? chatModels[0];
   return {
     remoteModels: models,
-    modelOptions: models.map((model) => toModelOption(model, manualImageInput)),
+    modelOptions: chatModels.map((model) => toModelOption(model, manualImageInput)),
     model: selected?.code ?? "",
     modelConfig: selected ? connectionFromModel(selected, manualImageInput) : null,
   };

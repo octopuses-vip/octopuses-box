@@ -345,7 +345,7 @@ export interface AppStore {
   rightPanelMaximized: boolean;
   rightTab: RightTab;
   model: string;
-  /** 可选模型列表，由后台下发的授权模型生成 */
+  /** 从授权模型中派生的对话模型选项。 */
   modelOptions: ModelOption[];
   /** 后台下发的授权模型原始列表（含 baseUrl / apiKey），仅保存在内存，每次登录重新获取 */
   remoteModels: RemoteModel[];
