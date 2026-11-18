@@ -1,0 +1,1 @@
+body{font:14px system-ui;width:300px;padding:14px;background:#142236;color:#edf4fa}h2{font-size:18px}form{display:grid;gap:8px}input,button{font:inherit;padding:9px;border:1px solid #60748b;border-radius:7px;margin-bottom:8px}button{cursor:pointer}#status{overflow-wrap:anywhere}

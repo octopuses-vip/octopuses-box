@@ -42,14 +42,14 @@ impl ModelProxyState {
     }
 
     /// 登记一次请求，返回取消信号的接收端供请求任务 `select!` 监听
-    fn begin(&self, request_id: &str) -> oneshot::Receiver<()> {
+    pub(crate) fn begin(&self, request_id: &str) -> oneshot::Receiver<()> {
         let (sender, receiver) = oneshot::channel();
         self.inflight().insert(request_id.to_string(), sender);
         receiver
     }
 
     /// 注销一次请求；正常结束与主动中断都要调用，否则句柄表会一直增长
-    fn finish(&self, request_id: &str) {
+    pub(crate) fn finish(&self, request_id: &str) {
         self.inflight().remove(request_id);
     }
 
@@ -279,6 +279,7 @@ pub async fn model_fetch(
     let http_method = match method.as_str() {
         "GET" => reqwest::Method::GET,
         "POST" => reqwest::Method::POST,
+        "DELETE" => reqwest::Method::DELETE,
         other => return Err(format!("不支持的模型请求方法：{other}")),
     };
 

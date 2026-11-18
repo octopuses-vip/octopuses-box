@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm prepare:runtime && pnpm build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -23,12 +23,23 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
     }
   },
   "bundle": {
     "active": true,
-    "resources": ["../LICENSE", "../THIRD_PARTY_NOTICES.md"],
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "../THIRD_PARTY_LICENSES/Symphonia-MPL-2.0.txt": "THIRD_PARTY_LICENSES/Symphonia-MPL-2.0.txt",
+      "../companion/": "companion/",
+      "../browser-extension/": "browser-extension/",
+      "runtime/": "runtime/"
+    },
     "targets": "all",
     "icon": [
       "icons/32x32.png",

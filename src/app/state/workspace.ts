@@ -20,8 +20,10 @@ export function effectiveWorkspacePath(
   const thread = state.threads.find((item) => item.id === threadId);
   if (!thread) return null;
   if (thread.executionContext === "worktree" && thread.worktreePath) return thread.worktreePath;
-  const projectPath = state.projects.find((project) => project.id === thread.projectId)?.path;
-  return projectPath || thread.workspacePath || null;
+  const project = state.projects.find((p) => p.id === thread.projectId);
+  const roots = project ? [project.path, ...(project.folders ?? [])].filter(Boolean) : [];
+  if (thread.workspacePath && roots.includes(thread.workspacePath)) return thread.workspacePath;
+  return project?.path || thread.workspacePath || null;
 }
 
 /**

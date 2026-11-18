@@ -235,3 +235,17 @@ export async function clearCache(root: string, scope: "temp" | "all"): Promise<C
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<CacheInfo>("cache_clear", { path: root, scope });
 }
+
+/** Atomic snapshots for work that must survive a renderer or process restart. */
+export async function writeCacheAtomic(root: string, relative: string, contents: string): Promise<void> {
+  if (!isDesktopRuntime()) return writeCacheFile(root, relative, contents);
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("cache_write_atomic", { path: root, relative, contents });
+}
+
+/** Treat only a missing cache file as empty, preserving other storage failures. */
+export async function readCacheOptional(root: string, relative: string): Promise<string | null> {
+  if (!isDesktopRuntime()) return readCacheFile(root, relative);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke("cache_read_optional", { path: root, relative });
+}

@@ -177,6 +177,23 @@
   flex-shrink: 0;
 }
 
+.right-panel__title {
+  padding-inline: 7px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-ui);
+}
+
+.right-panel__empty {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+}
+
+.right-panel__empty p {
+  margin: 0;
+}
+
 .right-panel__tab-actions {
   display: flex;
   flex-shrink: 0;

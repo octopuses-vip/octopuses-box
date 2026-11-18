@@ -1,3 +1,4 @@
+import { PlanCard } from "../tasks/PlanCard";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { rollbackWorkspaceCheckpoint } from "../app/desktop/workspace";
@@ -9,7 +10,6 @@ import type { Message, MessageAttachment, QuestionAnswers, StreamItem } from "..
 import { Icon } from "../components/Icon";
 import { resolveCommandApproval } from "../hooks/useAgentRun";
 import { useAutoScroll } from "../hooks/useAutoScroll";
-import { NEW_CHAT_SUGGESTIONS } from "../mock/threads";
 import { AnswerText } from "./blocks/AnswerText";
 import { ApprovalCard } from "./blocks/ApprovalCard";
 import { CheckpointCard } from "./blocks/CheckpointCard";
@@ -20,6 +20,7 @@ import { NoticeCard } from "./blocks/NoticeCard";
 import { QuestionCard } from "./blocks/QuestionCard";
 import { ReasoningBlock } from "./blocks/ReasoningBlock";
 import { SourcesCard } from "./blocks/SourcesCard";
+import { VideoJobCard } from "../video/VideoJobCard";
 import { ToolCallCard } from "./blocks/ToolCallCard";
 import { UsageCard } from "./blocks/UsageCard";
 import { UserMessage } from "./blocks/UserMessage";
@@ -85,6 +86,8 @@ function renderItem(
     case "reasoning":
       return <ReasoningBlock key={item.id} text={item.text} done={item.done} />;
     case "tool_call":
+      if (item.kind === "plan" && item.plan?.length) return <PlanCard key={item.id} steps={item.plan} />;
+      if (item.kind === "video_gen") return <VideoJobCard key={item.id} item={item} />;
       return (
         <ToolCallCard
           key={item.id}
@@ -145,7 +148,6 @@ function renderItem(
 }
 
 interface ConversationStreamProps {
-  onPromptChange: (value: string) => void;
   onSubmit: (prompt: string, attachments: MessageAttachment[]) => void;
   /** 「追问」：把某条消息作为引用交给输入框（由 `ThreadView` 填进去并聚焦） */
   onFollowUp: (message: Message) => void;
@@ -160,7 +162,6 @@ interface ConversationStreamProps {
  * 真正的运行与落盘都交给上层，因此这里不直接触碰 store 的写入动作。
  */
 export function ConversationStreamBase({
-  onPromptChange,
   onSubmit,
   onFollowUp,
   onRegenerate,
@@ -264,7 +265,9 @@ export function ConversationStreamBase({
 
 /** 函数级说明（开发者 Jan）：执行 handleRollback 的单一职责，并返回可供调用方继续处理的结果。 */
   const handleRollback = async (messageId: string, itemId: string, checkpointId: string) => {
-    if (!cachePath || !workspacePath) {
+    const checkpoint = messages.find((m) => m.id === messageId)?.items.find((i) => i.id === itemId);
+    const checkpointRoot = checkpoint?.type === "checkpoint" ? checkpoint.workspacePath ?? workspacePath : workspacePath;
+    if (!cachePath || !checkpointRoot) {
       patchItem(activeThreadId, messageId, itemId, (item) =>
         item.type === "checkpoint"
           ? { ...item, status: "error", detail: "缓存目录或项目目录不可用，无法回滚。" }
@@ -276,7 +279,7 @@ export function ConversationStreamBase({
       item.type === "checkpoint" ? { ...item, status: "rollingBack", detail: "正在恢复文件…" } : item,
     );
     try {
-      const result = await rollbackWorkspaceCheckpoint(cachePath, workspacePath, checkpointId);
+      const result = await rollbackWorkspaceCheckpoint(cachePath, checkpointRoot, checkpointId);
       patchItem(activeThreadId, messageId, itemId, (item) =>
         item.type === "checkpoint"
           ? { ...item, status: "rolledBack", detail: `已恢复 ${result.files.length} 个文件。` }
@@ -317,40 +320,6 @@ export function ConversationStreamBase({
     if (running) { setHistoryEnd(null); scrollToBottom(); }
   }, [running, scrollToBottom]);
 
-  if (messages.length === 0) {
-    return (
-      <div className="conversation-stream">
-        <div className="chat-scroll">
-          <div className="empty-state">
-            <div className="empty-state__mark" aria-hidden="true">
-              <Icon name="sparkles" size={26} />
-            </div>
-            <div className="empty-state__eyebrow">你的 AI 工作空间</div>
-            <div className="empty-state__title">今天想让 {APP_NAME} 做什么？</div>
-            <p className="empty-state__desc">从一个想法开始，让代码、文档与日常工作向前一步。</p>
-            <div className="suggestion-grid">
-              {NEW_CHAT_SUGGESTIONS.map((suggestion, index) => (
-                <button
-                  type="button"
-                  className="suggestion"
-                  key={suggestion}
-                  onClick={() => {
-                    onPromptChange(suggestion);
-                    onSubmit(suggestion, []);
-                  }}
-                >
-                  <span className="suggestion__index" aria-hidden="true">0{index + 1}</span>
-                  <span className="suggestion__text">{suggestion}</span>
-                  <Icon name="chevron-right" size={16} />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="conversation-stream">
       <div className="chat-scroll" ref={ref} onScroll={onScroll}>
@@ -374,7 +343,7 @@ export function ConversationStreamBase({
             ) : (
               <div className="msg" key={message.id} data-message-id={message.id}>
                 <div className="assistant">
-                  {message.items.map((item) =>
+                  {message.items.filter((item, itemIndex) => item.type !== "tool_call" || item.kind !== "plan" || !item.plan?.length || !message.items.slice(itemIndex + 1).some((later) => later.type === "tool_call" && later.kind === "plan" && later.plan?.length)).map((item) =>
                     renderItem(
                       item,
                       running,
@@ -396,6 +365,7 @@ export function ConversationStreamBase({
       {!pinned ? (
         <div className="chat-latest-bar">
           <button type="button" className="btn btn--sm" onClick={() => { setHistoryEnd(null); setVisibleCount(100); requestAnimationFrame(scrollToBottom); }}>
+            <Icon name="arrow-up" size={12} />
             回到最新
           </button>
         </div>
@@ -410,6 +380,6 @@ export function ConversationStreamBase({
  * 输入内容由上层 `ThreadView` 持有，每次按键都会让它重渲染；若不拦截，消息流会跟着重算，
  * 消息块里的 Markdown 会被整段替换（一次按键上百次 DOM 变更），WebKit 借此调整滚动位置，
  * 把原本贴底的会话拽到中间——浏览器端滚动策略不同，所以只在客户端复现。
- * 四个入参在上层已用 `useCallback` / `useState` 固定引用，内容不变时 memo 直接短路。
+ * 上层通过 `useCallback` 固定传入的回调引用。
  */
 export const ConversationStream = memo(ConversationStreamBase);

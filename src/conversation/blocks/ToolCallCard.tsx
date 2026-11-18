@@ -2,12 +2,14 @@ import type { ToolKind, ToolStatus } from "../../app/types";
 import { Icon, type IconName } from "../../components/Icon";
 
 const TOOL_ICON: Record<ToolKind, IconName> = {
+  plan: "clipboard-check",
   exec_command: "terminal",
   apply_patch: "diff",
   read_file: "file",
   write_file: "code",
   write_artifact: "file",
   image_gen: "image",
+  video_gen: "video",
   search_code: "search",
   test_runner: "clipboard-check",
   web_search: "globe",
@@ -56,8 +58,8 @@ export function ToolCallCard({
   const showOutput = status !== "running" && output.length > 0;
 
   return (
-    <div className="tool-card">
-      <div className="tool-card__head">
+    <details className={`tool-card tool-card--${status}`} open={status === "error"}>
+      <summary className="tool-card__head">
         <span className="tool-card__icon">
           <Icon name={TOOL_ICON[kind]} size={14} />
         </span>
@@ -70,7 +72,8 @@ export function ToolCallCard({
             `${STATUS_LABEL[status]}${durationMs ? ` · ${(durationMs / 1000).toFixed(2)}s` : ""}`
           )}
         </span>
-      </div>
+        <Icon name="chevron-down" size={11} />
+      </summary>
       {command ? <pre className="tool-card__cmd">$ {command}</pre> : null}
       {showOutput ? (
         <pre
@@ -81,6 +84,6 @@ export function ToolCallCard({
           {output}
         </pre>
       ) : null}
-    </div>
+    </details>
   );
 }

@@ -33,18 +33,11 @@ struct AutomationDueEvent {
     due_at: u64,
 }
 
-/// 由系统定时项唤起时广播的事件：告诉前端该执行哪个任务
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AutomationWakeEvent {
-    pub automation_id: String,
-}
-
 #[derive(Default)]
 struct SchedulerData {
     tasks: HashMap<String, AutomationTask>,
     in_flight: HashSet<String>,
-    /// 启动时从命令行取到的待执行任务 id；前端可能晚于事件注册，故同时留一份供主动取回
+    /// 启动时从命令行取到的待执行任务 id，前端准备就绪后领取一次。
     wake: Option<String>,
 }
 
@@ -169,7 +162,7 @@ pub fn automation_release(
 
 /// 取回启动参数指定的待执行任务（只取一次）。
 ///
-/// 事件广播发生在 `setup` 阶段，前端可能还没注册监听；前端挂载后再主动调一次这里兜底。
+/// 前端在会话和任务配置恢复后调用。
 #[tauri::command]
 pub fn automation_take_wake(state: State<'_, AutomationSchedulerState>) -> Option<String> {
     let wake = state.take_wake();

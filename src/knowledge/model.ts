@@ -39,6 +39,7 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 export const useKnowledgeModel = create<ModelState>((set, get) => {
   let cancelRequested = false;
   let downloadStarted = false;
+  let checking: Promise<void> | null = null;
   const run = async (
     busy: NonNullable<ModelState["busy"]>,
     task: () => Promise<KnowledgeModelStatus>,
@@ -62,10 +63,14 @@ export const useKnowledgeModel = create<ModelState>((set, get) => {
     error: null,
     refresh: () => {
       if (!isDesktopRuntime()) return Promise.resolve();
-      return run("checking", async () => {
+      if (checking) return checking;
+      checking = run("checking", async () => {
         const { invoke } = await import("@tauri-apps/api/core");
         return invoke<KnowledgeModelStatus>("knowledge_model_status");
+      }).finally(() => {
+        checking = null;
       });
+      return checking;
     },
     download: () => run("downloading", async () => {
       if (!isDesktopRuntime()) throw new Error("请在桌面应用中下载向量模型。");

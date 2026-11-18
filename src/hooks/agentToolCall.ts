@@ -1,3 +1,10 @@
+import { hostRequest } from "../app/desktop/companion";
+import { LIVE_BROWSER_TOOL } from "../tools/liveBrowser";
+import { SELECT_WORKSPACE_TOOL } from "../tasks/workspaces";
+import { effectiveWorkspacePath } from "../app/state/workspace";
+import { buildProjectRulesMessage } from "../context/rules";
+import { taskKey, taskState } from "../tasks/store";
+import { TASK_TOOLS, PLAN_READ_TOOLS, runTaskTool } from "../tasks/tools";
 
 import { callMcpTool } from "../app/desktop/mcp";
 import { classifyWorkspaceCommand } from "../app/desktop/workspace";
@@ -90,7 +97,11 @@ import { lastAssistantReply } from "../automations/suggestions";
  */
 import { AgentExecutor, AgentRequest, AgentRunOutcome, collectToolImages, preview, readFileName, readSkillName, readArgumentNumber, readArgumentString, isActiveThread, runSlot, titleSummary, enqueueRequest, subagentApprovalMirrors } from "./useAgentRunShared";
 
+import { VIDEO_TOOL_NAME } from "../video/protocol";
+import { generateVideo } from "../video/generate";
 import type { ModelConnection } from "../app/desktop/connectionTypes";
+import { TRANSCRIBE_AUDIO_NAME } from "../audio/protocol";
+import { runAudioTool } from "../audio/tool";
 import type { AppStore } from "../app/storeTypes";
 import type { McpToolBinding } from "../mcp/tool";
 // AgentExecutionResult / AgentExecutor 已由 useAgentRunShared 的值导入带入，
@@ -98,7 +109,7 @@ import type { McpToolBinding } from "../mcp/tool";
 // 这里不能再重复声明，否则 oxc（vite）解析直接报重复标识符，开发模式白屏。
 // StreamItem 已由文件头部 app/types 的 type 导入带入，SkillToolScope 已由 skills/invoke
 // 的行内 type 导入带入；此处重复声明会让 oxc（vite）解析报重复标识符，开发模式白屏。
-import type { SshHost, Thread } from "../app/types";
+import type { MessageAttachment, SshHost, Thread } from "../app/types";
 
 /** 工具调用执行器的共享上下文；把模型循环与具体工具解耦（开发者 Jan）。 */
 export interface ToolCallExecutionContext {
@@ -115,6 +126,8 @@ export interface ToolCallExecutionContext {
   mcpBindings: McpToolBinding[];
   cachePath: string | null;
   skillToolScope: SkillToolScope;
+  messageId: string;
+  attachments: MessageAttachment[];
   artifactDir: string | null;
   config: ModelConnection;
   store: AppStore;
@@ -130,11 +143,59 @@ export interface ToolCallExecutionContext {
 
 /** 执行一条模型工具调用并把结果写回会话（开发者 Jan）。 */
 export async function runToolCall(call: ToolCall, context: ToolCallExecutionContext): Promise<ChatMessage> {
-  const { controller, valid, push, state, canSpawnSubagent, threadId, threadProjectId, thread, execute, patch, mcpBindings, cachePath, skillToolScope, artifactDir, config, store, approvalHost, workspacePath, renderedCheckpoints, sshHosts, pendingImages, runId, nextId } = context;
+  const { controller, valid, push, state, canSpawnSubagent, threadId, threadProjectId, thread, execute, patch, mcpBindings, cachePath, skillToolScope, artifactDir, config, store, approvalHost, renderedCheckpoints, sshHosts, pendingImages, runId, nextId } = context;
 
         controller.signal.throwIfAborted();
         if (!valid()) throw new DOMException("会话已删除或切换存储目录", "AbortError");
         const tool = call.function.name.trim();
+        if (taskState(taskKey(cachePath, threadId)).mode === "plan" && !PLAN_READ_TOOLS.has(tool)) return { role: "tool", tool_call_id: call.id, content: "计划模式不允许执行有副作用的工具，请先确认计划并切换到实施模式。" };
+        const workspacePath = effectiveWorkspacePath(useAppStore.getState(), threadId);
+        if (tool === SELECT_WORKSPACE_TOOL.function.name) {
+          if (!skillToolScope.mounted.has(tool)) return { role: "tool", tool_call_id: call.id, content: "当前未启用目录切换" };
+          try {
+            const args = JSON.parse(call.function.arguments);
+            const project = useAppStore.getState().projects.find((p) => p.id === threadProjectId);
+            const roots = project ? [project.path, ...(project.folders ?? [])] : [];
+            if (!roots.includes(args.path)) throw new Error("只能选择项目授权的目录");
+            if (thread.executionContext === "worktree") throw new Error("请先从 Worktree 切回本地目录");
+            useAppStore.getState().setThreadWorkspace(threadId, args.path);
+            return { role: "tool", tool_call_id: call.id, content: `已切换至 ${args.path}\n${await buildProjectRulesMessage(args.path) ?? "无额外目录规则"}` };
+          } catch (e) { return { role: "tool", tool_call_id: call.id, content: String(e) }; }
+        }
+
+        if (TASK_TOOLS.some((t) => t.function.name === tool)) {
+          if (!skillToolScope.mounted.has(tool)) return { role: "tool", tool_call_id: call.id, content: "当前未启用此任务工具" };
+          const output = runTaskTool(taskKey(cachePath, threadId), tool, call.function.arguments);
+          push({ id: nextId("item"), type: "tool_call", kind: "plan", title: tool === "update_plan" ? "更新计划" : "目标验收", command: null, status: output.startsWith("任务状态更新失败") ? "error" : "success", output, durationMs: 0, callId: call.id, name: tool, arguments: call.function.arguments, result: output, plan: tool === "update_plan" && !output.startsWith("任务状态更新失败") ? taskState(taskKey(cachePath, threadId)).plan.map((s) => ({ ...s })) : undefined });
+          return { role: "tool", tool_call_id: call.id, content: output };
+        }
+
+        if (tool === LIVE_BROWSER_TOOL.function.name) {
+          if (!cachePath || !skillToolScope.mounted.has(tool)) return { role: "tool", tool_call_id: call.id, content: "当前未启用浏览器扩展工具" };
+          try {
+            const args = JSON.parse(call.function.arguments);
+            if (!["tabs", "read", "click", "type", "navigate"].includes(args.action)) throw new Error("浏览器动作无效");
+            if (!["tabs", "read"].includes(args.action)) {
+              const approval = await requestApproval({ command: JSON.stringify(args), reason: "页面操作可能修改网站数据", pattern: `browser_live:${args.action}` }, approvalHost);
+              if (!approval.approved) throw new Error("浏览器操作未获批准");
+            }
+            return { role: "tool", tool_call_id: call.id, content: JSON.stringify(await hostRequest(cachePath, "/browser/action", args)) };
+          } catch (e) { return { role: "tool", tool_call_id: call.id, content: String(e) }; }
+        }
+
+        if (tool === TRANSCRIBE_AUDIO_NAME) {
+          if (!skillToolScope.mounted.has(tool)) return { role: "tool", tool_call_id: call.id, content: "当前未启用音视频转写工具。" };
+          const output = await runAudioTool(call, context);
+          state.producedAny = true;
+          return { role: "tool", tool_call_id: call.id, content: output };
+        }
+
+        if (tool === VIDEO_TOOL_NAME) {
+          if (!skillToolScope.mounted.has(tool)) return { role: "tool", tool_call_id: call.id, content: "当前未启用视频生成工具。" };
+          const result = await generateVideo(call, context);
+          state.producedAny = true;
+          return { role: "tool", tool_call_id: call.id, content: result.output };
+        }
 
         // 需求确认：成功时渲染一张待回答的卡片并标记本轮结束；参数不合法则让模型自行纠错
         if (tool === ASK_USER_TOOL_NAME) {
@@ -558,6 +619,7 @@ export async function runToolCall(call: ToolCall, context: ToolCallExecutionCont
               id: nextId("item"),
               type: "checkpoint",
               checkpointId: executed.checkpointId,
+              workspacePath: workspacePath ?? undefined,
               status: "ready",
               detail: "已保存本轮修改前的文件状态。",
             });

@@ -1,3 +1,6 @@
+import { ReviewPanel } from "../../workflows/ReviewPanel";
+import { BrowserPanel } from "../../workflows/BrowserPanel";
+import { useWorkflowUI } from "../../workflows/store";
 import { useEffect, useMemo, type ComponentType } from "react";
 
 import { effectiveArtifactDir, hasDrawingFiles, rightPanelTabs } from "../../app/state/artifacts";
@@ -7,7 +10,7 @@ import type { RightTab } from "../../app/types";
 import { Icon, type IconName } from "../../components/Icon";
 import { FilePreview } from "./tabs/FilePreview";
 import { GitDiff } from "./tabs/GitDiff";
-import { ImagePreview } from "./tabs/ImagePreview";
+import { MediaPreview } from "./tabs/MediaPreview";
 import { ModelPreview } from "./tabs/ModelPreview";
 import { ReviewQueue } from "./tabs/ReviewQueue";
 import { Sources } from "./tabs/Sources";
@@ -15,9 +18,11 @@ import { WebPreview } from "./tabs/WebPreview";
 
 /** 顶栏 tab 的文案与图标；实际显示哪几个由 rightPanelTabs 按内容决定 */
 const TAB_META: Record<RightTab, { label: string; icon: IconName }> = {
+  pulls: { label: "PR", icon: "branch" },
+  browser: { label: "浏览器", icon: "globe" },
   files: { label: "文件", icon: "file" },
   web: { label: "网页", icon: "globe" },
-  media: { label: "图片", icon: "image" },
+  media: { label: "媒体", icon: "image" },
   model: { label: "3D", icon: "cube" },
   diff: { label: "差异", icon: "diff" },
   review: { label: "审阅", icon: "message" },
@@ -25,9 +30,11 @@ const TAB_META: Record<RightTab, { label: string; icon: IconName }> = {
 };
 
 const PANES: Record<RightTab, ComponentType> = {
+  pulls: ReviewPanel,
+  browser: BrowserPanel,
   files: FilePreview,
   web: WebPreview,
-  media: ImagePreview,
+  media: MediaPreview,
   model: ModelPreview,
   diff: GitDiff,
   review: ReviewQueue,
@@ -37,7 +44,7 @@ const PANES: Record<RightTab, ComponentType> = {
 /**
  * 右栏容器（开发者 Jan）：按内容出现文件 / 网页 / 图片 / 差异 / 来源 / 评审等 tab。
  *
- * 不做全量展示：全为空时整栏自动收起，避免占着宽度却没有任何内容可看。
+ * 用户主动展开后，暂无内容时显示说明。
  * 标签列表与面板操作分别布局，窄栏时仍能访问最大化与收起按钮。
  */
 export function RightPanel() {
@@ -54,15 +61,16 @@ export function RightPanel() {
       ?.reviewComments.filter((comment) => !comment.resolved).length ?? 0,
   );
   const artifactDir = useAppStore((state) => effectiveArtifactDir(state));
+  const previewName = useAppStore((state) => state.activeArtifact?.name);
   const rightPanelMaximized = useAppStore((state) => state.rightPanelMaximized);
   const setRightTab = useAppStore((state) => state.setRightTab);
-  const setRightPanelOpen = useAppStore((state) => state.setRightPanelOpen);
   const setRightPanelMaximized = useAppStore((state) => state.setRightPanelMaximized);
   const toggleRightPanel = useAppStore((state) => state.toggleRightPanel);
 
+  const docks = useWorkflowUI((s) => s.docks);
   const tabs = useMemo(
     () =>
-      rightPanelTabs(
+      [...rightPanelTabs(
         artifacts,
         diffFiles,
         sources,
@@ -70,14 +78,10 @@ export function RightPanel() {
         unresolvedReviewCount,
         hasDrawingFiles(artifacts, workspaceImports),
         artifactDir !== null,
-      ),
-    [artifacts, workspaceImports, diffFiles, sources, gitDiffStatus, unresolvedReviewCount, artifactDir],
+        previewName,
+      ), ...docks],
+    [artifacts, workspaceImports, diffFiles, sources, gitDiffStatus, unresolvedReviewCount, artifactDir, previewName, docks],
   );
-
-  // 没有任何内容时不占位：右栏自动收起
-  useEffect(() => {
-    if (tabs.length === 0 && rightPanelOpen) setRightPanelOpen(false);
-  }, [tabs, rightPanelOpen, setRightPanelOpen]);
 
   // 当前 tab 已无内容时，落到第一个仍有内容的 tab
   useEffect(() => {
@@ -85,16 +89,17 @@ export function RightPanel() {
     setRightTab(tabs[0]);
   }, [tabs, rightTab, setRightTab]);
 
-  if (!rightPanelOpen || tabs.length === 0) return null;
+  if (!rightPanelOpen) return null;
 
   // 顶栏没有的 tab 不会渲染，切换前先取一个有效值，避免闪一帧空内容
   const activeTab = tabs.includes(rightTab) ? rightTab : tabs[0];
-  const Pane = PANES[activeTab];
+  const Pane = activeTab ? PANES[activeTab] : null;
 
   return (
-    <aside className="right-panel">
+    <aside className="right-panel" id="session-right-panel" aria-label="右侧面板">
       <div className="right-panel__tabs">
         <div className="right-panel__tab-list">
+          {tabs.length === 0 && <span className="right-panel__title">右侧面板</span>}
           {tabs.map((key) => (
             <button
               type="button"
@@ -129,7 +134,13 @@ export function RightPanel() {
         </div>
       </div>
       <div className="right-panel__body">
-        <Pane />
+        {Pane ? <Pane /> : (
+          <div className="panel-empty right-panel__empty">
+            <Icon name="panel-right" size={23} />
+            <strong>暂无可预览的内容</strong>
+            <p>会话生成的文件、代码差异和引用来源会显示在这里。</p>
+          </div>
+        )}
       </div>
     </aside>
   );

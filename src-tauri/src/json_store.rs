@@ -6,7 +6,10 @@
 //! 不会出现被截断的半个文件。
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+static NEXT_WRITE: AtomicU64 = AtomicU64::new(0);
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -23,8 +26,12 @@ pub fn write_atomic(path: &Path, contents: &str) -> Result<(), String> {
         .file_name()
         .ok_or_else(|| format!("配置路径无文件名：{}", path.display()))?
         .to_string_lossy();
-    let temp = parent.join(format!(".{file_name}.tmp-{}", std::process::id()));
-    fs::write(&temp, contents).map_err(|error| format!("写入临时配置失败: {error}"))?;
+    let temp = parent.join(format!(".{file_name}.tmp-{}-{}", std::process::id(), NEXT_WRITE.fetch_add(1, Ordering::Relaxed)));
+    let mut options = fs::OpenOptions::new(); options.write(true).create_new(true);
+    #[cfg(unix)] { use std::os::unix::fs::OpenOptionsExt; options.mode(0o600); }
+    let mut file = options.open(&temp).map_err(|error| format!("写入临时配置失败: {error}"))?;
+    if let Err(error) = file.write_all(contents.as_bytes()).and_then(|_| file.sync_all()) { let _ = fs::remove_file(&temp); return Err(format!("保存配置失败：{error}")); }
+    drop(file);
     if let Err(error) = fs::rename(&temp, path) {
         let _ = fs::remove_file(&temp);
         return Err(format!("替换配置失败: {error}"));

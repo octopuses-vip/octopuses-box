@@ -46,6 +46,9 @@ octopuses 使用了若干第三方开源组件、模型与数据资产。本文�
 | rusqlite | MIT | https://github.com/rusqlite/rusqlite |
 | portable-pty | MIT | https://github.com/wez/wezterm |
 | reqwest | MIT / Apache-2.0 | https://github.com/seanmonstar/reqwest |
+| mime_guess（音频 multipart 上传的传递依赖） | MIT | https://github.com/abonander/mime_guess |
+| unicase（mime_guess 的传递依赖） | MIT / Apache-2.0 | https://github.com/seanmonstar/unicase |
+| Symphonia 及其解码器 / 容器组件（0.5.5，长录音本地分段） | MPL-2.0 | https://github.com/pdeljanov/Symphonia/tree/v0.5.5 |
 | encoding_rs | (Apache-2.0 / MIT) AND BSD-3-Clause | https://github.com/hsivonen/encoding_rs |
 | sha2 | MIT / Apache-2.0 | https://github.com/RustCrypto/hashes |
 | futures | MIT / Apache-2.0 | https://github.com/rust-lang/futures-rs |
@@ -54,6 +57,8 @@ octopuses 使用了若干第三方开源组件、模型与数据资产。本文�
 | russh-sftp | Apache-2.0 | https://github.com/Eugeny/russh |
 | keyring | MIT / Apache-2.0 | https://github.com/hwchen/keyring-rs |
 | minisign-verify | MIT | https://github.com/jedisct1/rust-minisign-verify |
+
+Symphonia 以未修改的 0.5.5 版本使用，原始源码可从上表项目链接获取；许可证全文见 [Symphonia-MPL-2.0.txt](THIRD_PARTY_LICENSES/Symphonia-MPL-2.0.txt)，并随桌面应用资源分发。
 
 ---
 
@@ -110,3 +115,8 @@ cargo metadata --manifest-path ots-cli/Cargo.toml --format-version 1
 ---
 
 最后更新：2026-11-13（对应 octopuses v0.47.81）
+
+
+## Bundled companion runtime
+
+Desktop bundles include the build machine's platform-matched Node.js runtime (Node.js project and contributors, MIT, with additional third-party components). The complete license from that exact Node distribution is included as `runtime/NODE-LICENSE.txt` in the application resources. `scripts/prepare-runtime.mjs` requires this license when preparing a release.

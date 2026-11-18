@@ -1,13 +1,14 @@
-import { useCallback, useEffect } from "react";
+import { OfficePreview } from "../../../office/OfficePreview";
+import { useEffect } from "react";
 
-import { effectiveArtifactDir, resolveMarkdownLinkTarget } from "../../../app/state/artifacts";
-import { effectiveWorkspacePath } from "../../../app/state/workspace";
+import { effectiveArtifactDir } from "../../../app/state/artifacts";
 import { useAppStore } from "../../../app/state";
 import { Icon } from "../../../components/Icon";
 import { MarkdownLinkScope } from "../../../conversation/Markdown";
 import { drawingFormatOf } from "../../../model/drawings";
 import { FileRow } from "../FileRow";
 import { MarkdownPreview } from "./MarkdownPreview";
+import { VideoPlayer } from "./VideoPlayer";
 import { PdfPreview } from "./PdfPreview";
 import { TablePreview } from "./TablePreview";
 
@@ -42,6 +43,7 @@ export function FilePreview() {
   const artifactDir = useAppStore((state) => effectiveArtifactDir(state));
   const loadArtifacts = useAppStore((state) => state.loadArtifacts);
   const selectArtifact = useAppStore((state) => state.selectArtifact);
+  const openMarkdownLink = useAppStore((state) => state.openMarkdownLink);
 
   useEffect(() => {
     if (artifactStatus === "idle") void loadArtifacts();
@@ -53,26 +55,6 @@ export function FilePreview() {
     if (useAppStore.getState().activeArtifact) return;
     void selectArtifact(artifacts[0].name);
   }, [artifacts, selectArtifact]);
-
-  /**
-   * Markdown 预览内的相对链接导航（开发者 Jan）：解析成应用内文件位置后直接打开预览。
-   * 产物按产物通道读，工作区文件按扩展名走字节 / 文本通道（见 `openFileLocation`）；
-   * 返回 false 表示不是应用内目标（`http(s)` 等），交给系统浏览器。
-   */
-  const handleLink = useCallback(
-    (href: string) => {
-      const state = useAppStore.getState();
-      const target = resolveMarkdownLinkTarget(href, {
-        artifacts: state.artifacts,
-        workspacePath: effectiveWorkspacePath(state),
-        artifactDir: effectiveArtifactDir(state),
-      });
-      if (!target) return false;
-      void state.openFileLocation(target);
-      return true;
-    },
-    [],
-  );
 
   const artifact = activeArtifact;
 
@@ -98,7 +80,11 @@ export function FilePreview() {
       }
       return <div className="panel-empty">正在读取图片…</div>;
     }
+    if (artifact.kind === "video" && artifact.objectUrl) return <VideoPlayer url={artifact.objectUrl} name={artifact.name} />;
     if (artifact.kind === "pdf") return <PdfPreview />;
+    if (artifact.source.kind === "artifact" && /\.(docx|xlsx|pptx|odt|ods|odp)$/i.test(artifact.name)) {
+      return <OfficePreview directory={artifact.source.dir} name={artifact.name} revision={artifact.modifiedAt} />;
+    }
     if (artifact.kind === "binary") {
       // 图纸被归为二进制（不当文本渲染），但它是可看的，只是要看在另一个 tab
       if (drawingFormatOf(artifact.name)) {
@@ -113,7 +99,7 @@ export function FilePreview() {
     const renderer = textRendererOf(artifact.name);
     if (renderer === "markdown") {
       return (
-        <MarkdownLinkScope onLink={handleLink}>
+        <MarkdownLinkScope onLink={openMarkdownLink}>
           <MarkdownPreview />
         </MarkdownLinkScope>
       );
@@ -132,7 +118,7 @@ export function FilePreview() {
     );
   };
 
-  if (artifacts.length === 0) {
+  if (artifacts.length === 0 && !activeArtifact) {
     return (
       <div className="panel-empty">
         <div>
@@ -148,19 +134,19 @@ export function FilePreview() {
 
   return (
     <div className="file-tab">
-      <div className="list-row file-tab__list" style={{ margin: 10, flexDirection: "column", gap: 4 }}>
+      {artifacts.length > 0 && <div className="list-row file-tab__list" style={{ margin: 10, flexDirection: "column", gap: 4 }}>
         {artifacts.map((artifact) => (
           <FileRow
             key={artifact.name}
             icon="file"
             name={artifact.name}
             bytes={artifact.bytes}
-            active={artifact.name === activeArtifact?.name}
+            active={activeArtifact?.source.kind === "artifact" && artifact.name === activeArtifact.name}
             onSelect={() => void selectArtifact(artifact.name)}
             source={{ kind: "artifact", dir: artifactDir ?? "", name: artifact.name }}
           />
         ))}
-      </div>
+      </div>}
 
       {activeArtifact ? (
         renderArtifact()

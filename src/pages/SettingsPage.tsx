@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ComputerSettings } from "../computer/ComputerSettings";
+import { WindowsSandboxSetup } from "../components/WindowsSandboxSetup";
+import { WorkflowPreferences } from "../workflows/WorkflowPreferences";
 
 import { clearCache, initCacheDir, readCacheInfo, type CacheInfo } from "../app/desktop/cache";
 import { pickDirectory, revealLocalFile } from "../app/desktop/system";
@@ -44,6 +46,7 @@ const SETTINGS_CATEGORIES = [
   { id: "models", label: "模型与连接", description: "维护本地模型文件与默认模型。" },
   { id: "permissions", label: "权限与安全", description: "设置命令审批、沙箱与自动批准规则。" },
   { id: "runtime", label: "运行与上下文", description: "调整运行上限、上下文压缩和后台定时。" },
+  { id: "workspace", label: "工作区扩展", description: "管理记忆与浏览器。" },
   { id: "storage", label: "存储与缓存", description: "查看本地存储用量，管理缓存目录与临时文件。" },
   { id: "advanced", label: "高级与调试", description: "查看模型调用记录等调试信息。" },
   { id: "about", label: "关于", description: "查看应用版本。" },
@@ -62,12 +65,19 @@ function SettingsGroup({ category, active, children }: {
 
 /** 设置页：模型、工作区、缓存路径与账号信息 */
 export function SettingsPage() {
-  const [category, setCategory] = useState<SettingsCategory>("appearance");
+  const category = useAppStore((state) => state.settingsCategory);
+  const openSettings = useAppStore((state) => state.openSettings);
+  const pageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { pageRef.current?.scrollTo(0, 0); }, [category]);
   const currentCategory = SETTINGS_CATEGORIES.find((item) => item.id === category)!;
   // 订阅 platform 只为了让平台落定后重渲染，从而按平台隐藏不可用的能力区块
   useAppStore((state) => state.platform);
   const { themeId, schemePreference, resolvedScheme, setThemeId, setSchemePreference } = useTheme();
   const model = useAppStore((state) => state.model);
+  const videoModelCode = useAppStore((state) => state.videoModelCode);
+  const setVideoModelCode = useAppStore((state) => state.setVideoModelCode);
+  const audioModelCode = useAppStore((state) => state.audioModelCode);
+  const setAudioModelCode = useAppStore((state) => state.setAudioModelCode);
   const modelOptions = useAppStore((state) => state.modelOptions);
   const modelConfigStatus = useAppStore((state) => state.modelConfigStatus);
   const modelConfigError = useAppStore((state) => state.modelConfigError);
@@ -262,12 +272,12 @@ export function SettingsPage() {
             ? 0
             : ids.length - 1;
     const nextId = ids[next];
-    setCategory(nextId);
+    openSettings(nextId);
     document.getElementById(`settings-tab-${nextId}`)?.focus();
   };
 
   return (
-    <div className="page settings-page">
+    <div className="page settings-page" ref={pageRef}>
       <div className="page__inner">
         <header className="settings-header">
           <p className="page__desc">按分类调整你的工作环境。</p>
@@ -291,7 +301,7 @@ export function SettingsPage() {
                     ? "settings-tabs__tab settings-tabs__tab--active"
                     : "settings-tabs__tab"
                 }
-                onClick={() => setCategory(item.id)}
+                onClick={() => openSettings(item.id)}
               >
                 {item.label}
               </button>
@@ -305,6 +315,7 @@ export function SettingsPage() {
           role="tabpanel"
           aria-label={currentCategory.label}
         >
+        <SettingsGroup category="workspace" active={category}><WorkflowPreferences /></SettingsGroup>
         <SettingsGroup category="appearance" active={category}>
 
         <div className="page__section">
@@ -443,7 +454,29 @@ export function SettingsPage() {
               {supportsImages ? "已开启" : "已关闭"}
             </button>
           </div>
-          {/* 常驻显示：本地文件可能被外部编辑器改过，用户需要能主动重新读一次 */}
+          <label className="list-row">
+            <span className="list-row__main">
+              <span className="list-row__title">视频生成模型</span>
+              <span className="list-row__desc">选择已开通视频生成的模型或推理接入点。可在聊天中输入 /video 并附一张首帧图片。</span>
+            </span>
+            <select aria-label="视频生成模型" value={videoModelCode} onChange={(event) => setVideoModelCode(event.target.value)}>
+              <option value="">未配置</option>
+              {remoteModels.map((item) => <option key={item.code} value={item.code}>{item.name || item.code}</option>)}
+            </select>
+          </label>
+          <label className="list-row">
+            <span className="list-row__main">
+              <span className="list-row__title">音频转文字模型</span>
+              <span className="list-row__desc">选择支持语音识别的模型。音频附件会自动转成文字。</span>
+            </span>
+            <select aria-label="音频转文字模型" value={audioModelCode} onChange={(event) => setAudioModelCode(event.target.value)}>
+              <option value="">未配置</option>
+              {audioModelCode && !remoteModels.some((item) => item.code === audioModelCode) ? <option value={audioModelCode}>原模型已不可用，请重新选择</option> : null}
+              {remoteModels.map((item) => <option key={item.code} value={item.code}>{item.name || item.code}</option>)}
+            </select>
+          </label>
+          {/* 常驻显示：后台随时可能新增或下架模型，本地文件也可能被外部编辑器改过，
+              用户需要能主动重新拉一次列表 */}
           <div className="login__actions" style={{ marginTop: 8 }}>
             <button
               type="button"
@@ -486,10 +519,10 @@ export function SettingsPage() {
             <>
               <div className="list-row">
                 <span className="list-row__main">
-                  <span className="list-row__title">内核级沙箱（macOS Seatbelt）</span>
+                  <span className="list-row__title">命令隔离（Seatbelt / bubblewrap / Docker）</span>
                   <span className="list-row__desc">
                     开启后模型触发的命令由系统内核强制限制写入范围：只允许写当前项目目录与工具链缓存，
-                    越界写入会被拦下并回填可读原因。系统未提供 sandbox-exec 时自动降级为不限制。
+                    越界写入会被拦下。所需隔离环境不可用时，命令会停止并提示原因。
                   </span>
                 </span>
                 <button
@@ -501,6 +534,7 @@ export function SettingsPage() {
                   {sandboxEnabled ? "已开启" : "已关闭"}
                 </button>
               </div>
+              <WindowsSandboxSetup />
               <div className="list-row">
                 <span className="list-row__main">
                   <span className="list-row__title">允许沙箱内命令联网</span>

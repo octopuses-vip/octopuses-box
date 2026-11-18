@@ -17,7 +17,6 @@ body {
   font-family: var(--font-sans);
   font-size: var(--fs-base);
   line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
@@ -266,75 +265,10 @@ html[data-platform="linux"] .titlebar {
 
 .sidebar {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   height: 100%;
   background: var(--bg-1);
   border-right: 1px solid var(--border);
-}
-
-/* 独立的图标导航栏：保持固定窄宽，项目和会话列表不会挤压这里的点击区。 */
-.sidebar__rail {
-  display: flex;
-  flex: 0 0 var(--sidebar-rail-width);
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 0;
-  padding: 10px 6px;
-  background: var(--bg-2);
-  border-right: 1px solid var(--border);
-}
-
-.sidebar__rail-main,
-.sidebar__rail-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  width: 100%;
-}
-
-.sidebar__rail-item {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  color: var(--text-3);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
-
-.sidebar__rail-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-1);
-}
-
-.sidebar__rail-item--active {
-  background: var(--bg-active);
-  color: var(--text-1);
-}
-
-.sidebar__rail-badge {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  min-width: 13px;
-  padding: 0 3px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--text-on-strong);
-  font-size: 9px;
-  line-height: 13px;
-  text-align: center;
-}
-
-.sidebar__workspace {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
 }
 
 .sidebar__scroll {
@@ -648,7 +582,7 @@ html[data-platform="linux"] .titlebar {
  * 任务行的「子项」质感（开发者 Jan）
  *
  * 光靠缩进和 12px 字号层级仍糊：项目与任务选中时是两块同色同高的药丸并排。
- * 这里把子项整体调轻——标题减重到 400、行高收窄（上下 4px），
+ * 子项标题使用正文字重，行高收窄（上下 4px），
  * 选中态不再沿用项目行的实底（--bg-active），改用更浅的 hover 底色
  * 加 2px 主题色左标；父行重、子行轻、选中样式也不同，三层区分同时生效。
  */
@@ -658,7 +592,7 @@ html[data-platform="linux"] .titlebar {
 }
 
 .project-node__tasks .thread-item__title {
-  font-weight: 400;
+  font-weight: var(--fw-body);
 }
 
 .project-node__tasks .thread-item--active {

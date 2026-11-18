@@ -28,7 +28,7 @@ export function PermissionPicker() {
   const current = permissionModeOption(permissionMode ?? DEFAULT_PERMISSION_MODE);
 
   return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
+    <div ref={wrapRef} className="composer__picker">
       <button
         type="button"
         // 「全部自动」下命令不再逐条确认，用警示色让当前授权状态一眼可见

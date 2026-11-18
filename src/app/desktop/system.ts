@@ -52,10 +52,11 @@ export interface FileFilter {
 export async function pickFiles(options: {
   title: string;
   filters?: FileFilter[];
+  multiple?: boolean;
 }): Promise<string[]> {
   if (!isDesktopRuntime()) return [];
   const { open } = await import("@tauri-apps/plugin-dialog");
-  const selected = await open({ multiple: true, title: options.title, filters: options.filters });
+  const selected = await open({ multiple: options.multiple ?? true, title: options.title, filters: options.filters });
   // `multiple: true` 时插件回数组；个别平台/版本可能回单个字符串，两种都兜住
   if (Array.isArray(selected)) return selected;
   return typeof selected === "string" ? [selected] : [];

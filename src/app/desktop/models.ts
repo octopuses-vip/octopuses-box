@@ -93,7 +93,7 @@ export async function abortModelStream(requestId: string): Promise<void> {
  * `signal` 触发时立即通知 Rust 侧掐断上游，结果里以 `aborted` 告知调用方。
  */
 export async function fetchModelResource(request: {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "DELETE";
   url: string;
   key: string;
   /** POST 的 JSON 请求体原文；GET 不传 */

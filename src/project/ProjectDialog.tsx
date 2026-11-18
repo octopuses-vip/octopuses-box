@@ -29,6 +29,7 @@ export function ProjectDialog() {
 
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
+  const [folders, setFolders] = useState<string[]>([]);
   const [mcpIds, setMcpIds] = useState<string[]>([]);
   const [skillIds, setSkillIds] = useState<string[]>([]);
   const [sshHostIds, setSshHostIds] = useState<string[]>([]);
@@ -43,6 +44,7 @@ export function ProjectDialog() {
     const target = editId ? state.projects.find((item) => item.id === editId) ?? null : null;
     setName(target?.name ?? "");
     setPath(target?.path ?? "");
+    setFolders(target?.folders ?? []);
     setMcpIds(target?.mcpIds ?? []);
     setSkillIds(target?.skillIds ?? []);
     setSshHostIds(target?.sshHostIds ?? []);
@@ -78,6 +80,7 @@ export function ProjectDialog() {
     const payload = {
       name: trimmed,
       path: path.trim(),
+      folders: folders.filter((p) => p !== path.trim()),
       mcpIds,
       skillIds,
       sshHostIds,
@@ -128,6 +131,13 @@ export function ProjectDialog() {
             <p className="project-dialog__hint">
               该目录作为项目工作区：目录里的 AGENTS.md 自动作为项目规则，文件读写、附加上下文与终端都以它为根。
             </p>
+          </div>
+
+          <div className="project-dialog__group">
+            <label className="project-dialog__label">附加工作目录</label>
+            {folders.map((folder) => <div className="project-dialog__path" key={folder}><span>{folder}</span><button className="btn btn--ghost btn--sm" onClick={() => { setFolders((v) => v.filter((p) => p !== folder)); }}>移除</button></div>)}
+            <button className="btn btn--sm" onClick={() => { void pickDirectory().then((folder) => { if (folder && folder !== path) setFolders((v) => [...new Set([...v, folder])]); }).catch((e) => setError(String(e))); }}>添加目录</button>
+            <p className="project-dialog__hint">任务可在这些目录间切换。终端、文件工具和沙箱使用当前选择的目录；Git 与 Worktree 以主目录为起点。</p>
           </div>
 
           <div className="project-dialog__group">

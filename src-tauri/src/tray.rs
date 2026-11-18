@@ -23,7 +23,7 @@ const MENU_QUIT: &str = "tray-quit";
 ///
 /// 窗口可能是被隐藏的、也可能处于最小化状态，两个状态各恢复一半都看不到窗口：
 /// 先 `unminimize` 再 `show`，最后 `set_focus` 才能保证从托盘唤回时窗口真的出现在眼前。
-fn restore_main_window<R: Runtime>(app: &AppHandle<R>) {
+pub(crate) fn restore_main_window<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return;
     };

@@ -21,7 +21,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # tray-icon：窗口关闭时隐藏到系统托盘继续驻留后台（定时任务不中断），托盘图标作为恢复入口
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
@@ -29,12 +29,16 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }
 portable-pty = "0.9"
-# 原生 HTTP 请求：模型代理转发、网页抓取与共享 HTTP 客户端。json 用于请求体编码，
-# rustls 统一 TLS 实现，stream 支持流式读取响应体。
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "stream"] }
+# 原生 HTTP 请求：模型代理转发、网页抓取、音频分段上传与共享 HTTP 客户端。json 用于请求体编码，
+# rustls 统一 TLS 实现，stream 支持流式读取响应体，multipart 支持音频转写的分段上传。
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "stream", "multipart"] }
 # 网页抓取（web）：中文站点常用 GBK/GB2312，需要按响应字符集解码；reqwest 自身的
 # charset 能力只能走 text()，拿不到字节级限长，因此直接依赖其底层所用的 encoding_rs
 encoding_rs = "0.8"
+# 视频下载完成后原子发布，失败时清理临时文件。
+tempfile = "3"
+# 长录音在本地解码为独立 WAV 分段，不依赖用户安装 ffmpeg。
+symphonia = { version = "0.5.5", features = ["mp3", "aac", "isomp4", "alac"] }
 # 校验按需下载的知识库模型与分词器，避免把中断文件当作可用模型。
 sha2 = "0.10.9"
 # 模型请求代理（model_proxy）：流式转发要按块读响应体，并用 oneshot 承接取消信号
@@ -56,3 +60,6 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"

@@ -125,7 +125,7 @@ fn mcp_root(cache_dir: &Path) -> Result<PathBuf, String> {
 }
 
 /// 读取服务配置；文件不存在或为空时视为没有服务
-pub fn load(cache_dir: &Path) -> Result<Vec<McpServer>, String> {
+fn load(cache_dir: &Path) -> Result<Vec<McpServer>, String> {
     let file = mcp_root(cache_dir)?.join(SERVERS_FILE);
     Ok(crate::json_store::read_json::<Vec<McpServer>>(&file)?.unwrap_or_default())
 }
@@ -385,9 +385,13 @@ fn handshake(session: &mut Session) -> Result<(), String> {
 /// 列出一个服务声明的全部工具
 pub fn list_tools(cache_dir: &Path, server_id: &str) -> Result<Vec<McpTool>, String> {
     let server = find_server(cache_dir, server_id)?;
-    let mut session = Session::open(&server)?;
-    handshake(&mut session)?;
-    let result = session.request("tools/list", json!({}))?;
+    let result = if crate::mcp_http::is_http(&server.command) {
+        tauri::async_runtime::block_on(crate::mcp_http::rpc(&server.command, "tools/list", json!({})))?
+    } else {
+        let mut session = Session::open(&server)?;
+        handshake(&mut session)?;
+        session.request("tools/list", json!({}))?
+    };
     let tools = result
         .get("tools")
         .and_then(Value::as_array)
@@ -454,12 +458,14 @@ pub fn call_tool(
         serde_json::from_str(raw).map_err(|error| format!("工具参数不是合法 JSON: {error}"))?
     };
     let server = find_server(cache_dir, server_id)?;
-    let mut session = Session::open(&server)?;
-    handshake(&mut session)?;
-    let result = session.request(
-        "tools/call",
-        json!({ "name": name, "arguments": arguments }),
-    )?;
+    let params = json!({ "name": name, "arguments": arguments });
+    let result = if crate::mcp_http::is_http(&server.command) {
+        tauri::async_runtime::block_on(crate::mcp_http::rpc(&server.command, "tools/call", params))?
+    } else {
+        let mut session = Session::open(&server)?;
+        handshake(&mut session)?;
+        session.request("tools/call", params)?
+    };
     let is_error = result
         .get("isError")
         .and_then(Value::as_bool)
@@ -504,8 +510,8 @@ pub fn mcp_delete_server(
 /// 需要真正启动该服务的子进程并完成握手，因此只在设置页按需触发；
 /// 失败原因作为可读文本抛出，由页面展示，方便用户排查命令或参数写错。
 #[tauri::command]
-pub fn mcp_list_tools(cache_dir: String, server_id: String) -> Result<Vec<McpTool>, String> {
-    list_tools(Path::new(&cache_dir), &server_id)
+pub async fn mcp_list_tools(cache_dir: String, server_id: String) -> Result<Vec<McpTool>, String> {
+    tauri::async_runtime::spawn_blocking(move || list_tools(Path::new(&cache_dir), &server_id)).await.map_err(|e| e.to_string())?
 }
 
 /// 调用一个 MCP 服务上的工具（开发者 Jan）。
@@ -514,13 +520,13 @@ pub fn mcp_list_tools(cache_dir: String, server_id: String) -> Result<Vec<McpToo
 /// 返回值统一折成 McpCallResult，把「传输失败」与「工具自身报错」都转成可读文本回给模型，
 /// 而不是抛异常中断整轮运行。
 #[tauri::command]
-pub fn mcp_call_tool(
+pub async fn mcp_call_tool(
     cache_dir: String,
     server_id: String,
     tool: String,
     arguments_json: String,
 ) -> Result<McpCallResult, String> {
-    call_tool(Path::new(&cache_dir), &server_id, &tool, &arguments_json)
+    tauri::async_runtime::spawn_blocking(move || call_tool(Path::new(&cache_dir), &server_id, &tool, &arguments_json)).await.map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]

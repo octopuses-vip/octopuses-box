@@ -32,7 +32,7 @@ pub(crate) fn base64_encode(bytes: &[u8]) -> String {
 }
 
 /// 解码标准 base64：容忍换行与空白，非法字符或长度错误返回 Err
-pub(super) fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
     /// 单个 base64 字符的 6 位取值
     fn sextet(byte: u8) -> Option<u32> {
         match byte {

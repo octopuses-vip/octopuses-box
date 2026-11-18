@@ -574,3 +574,17 @@ fn usage_survives_reopening_database() {
     assert_eq!(summary.total_tokens, 30);
     fs::remove_dir_all(&root).ok();
 }
+
+#[test]
+fn video_reservations_are_unique_and_removed_with_their_thread() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().to_string_lossy().into_owned();
+    save(root.path(), &conversation("thread", 1, 1)).unwrap();
+    let write = |create, value: &str| video_save_job(dir.clone(), "thread".into(), "turn".into(), value.into(), create);
+    write(true, "submitting").unwrap();
+    assert!(write(true, "submitting").is_err());
+    write(false, "queued").unwrap();
+    assert_eq!(video_jobs(dir.clone()).unwrap(), ["queued"]);
+    session_db_delete(dir.clone(), "thread".into()).unwrap();
+    assert!(video_jobs(dir).unwrap().is_empty());
+}

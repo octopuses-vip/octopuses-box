@@ -124,3 +124,21 @@ pub fn artifact_migrate_legacy(
 ) -> Result<ArtifactMigrationResult, String> {
     migrate_legacy(Path::new(&cache_dir), &targets)
 }
+
+/// Atomically replace a recovery journal so a crash cannot truncate the prior snapshot.
+#[tauri::command]
+pub fn cache_write_atomic(path: String, relative: String, contents: String) -> Result<(), String> {
+    let root = std::fs::canonicalize(&path).map_err(|e| e.to_string())?;
+    let target = super::layout::resolve(&root, &relative)?;
+    let parent = target.parent().ok_or("缓存路径无效")?;
+    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    if !std::fs::canonicalize(parent).map_err(|e| e.to_string())?.starts_with(&root) { return Err("缓存目录越界".into()); }
+    crate::json_store::write_atomic(&target, &contents)
+}
+
+/// Missing recovery records are normal; permission and I/O errors must not look like an empty log.
+#[tauri::command]
+pub fn cache_read_optional(path: String, relative: String) -> Result<Option<String>, String> {
+    let target = super::layout::resolve(Path::new(&path), &relative)?;
+    match std::fs::read_to_string(target) { Ok(value) => Ok(Some(value)), Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None), Err(e) => Err(e.to_string()) }
+}

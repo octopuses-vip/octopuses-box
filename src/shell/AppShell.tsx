@@ -1,13 +1,18 @@
+import { useBrowserAnnotations } from "../workflows/useBrowserAnnotations";
+import { WorkflowDialog } from "../workflows/WorkflowDialog";
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 
+import { retireLegacyHost } from "../app/desktop/companion";
 import { effectiveArtifactDir } from "../app/state/artifacts";
 import { selectActiveThread } from "../app/storeSelectors";
 import { useAppStore } from "../app/state";
 import { APP_NAME } from "../app/meta";
 import { resolvePlatform, shortcutHint } from "../app/platform";
 import type { NavKey } from "../app/types";
+import { GoalWorker } from "../tasks/GoalWorker";
 import { AutomationScheduler } from "../automations/AutomationScheduler";
+import { useVideoWorker } from "../video/useVideoWorker";
 import { useCacheSync } from "../cache/useCacheSync";
 import { useKnowledgeSync } from "../knowledge/useKnowledgeSync";
 import { IconButton } from "../components/Button";
@@ -58,19 +63,23 @@ const VIEW_TITLE: Record<NavKey, string> = {
  */
 function ProjectOnboarding() {
   const openProjectDialog = useAppStore((state) => state.openProjectDialog);
+  const newChat = useAppStore((state) => state.newChat);
 
   return (
-    <div className="empty-state" style={{ flex: 1 }}>
-      <div className="empty-state__mark" aria-hidden="true"><Icon name="folder" size={26} /></div>
-      <div className="empty-state__eyebrow">WORKSPACE / 项目工作区</div>
-      <div className="empty-state__title">先添加一个项目</div>
-      <div className="muted" style={{ fontSize: "var(--fs-sm)", textAlign: "center" }}>
-        项目即本机的一个目录，项目下的任务共享这份工作区，目录里的 AGENTS.md 会自动作为项目规则。
+    <div className="empty-state">
+      <div className="empty-state__mark" aria-hidden="true"><Icon name="sparkles" size={25} /></div>
+      <h1 className="empty-state__title">从这里开始</h1>
+      <p className="empty-state__desc">直接开始会话，或选择一个本地目录来创建项目。</p>
+      <div className="empty-state__actions">
+        <button type="button" className="btn btn--primary" onClick={newChat}>
+          <Icon name="pencil" size={15} />
+          新建会话
+        </button>
+        <button type="button" className="btn" onClick={() => openProjectDialog()}>
+          <Icon name="folder" size={15} />
+          新建项目
+        </button>
       </div>
-      <button type="button" className="btn" onClick={() => openProjectDialog()}>
-        <Icon name="folder" size={14} />
-        新建项目
-      </button>
     </div>
   );
 }
@@ -91,16 +100,13 @@ function ProjectTaskOnboarding({
   const newTaskInProject = useAppStore((state) => state.newTaskInProject);
 
   return (
-    <div className="empty-state" style={{ flex: 1 }}>
-      <div className="empty-state__mark" aria-hidden="true"><Icon name="plus" size={26} /></div>
-      <div className="empty-state__eyebrow">WORKSPACE / 项目任务</div>
-      <div className="empty-state__title">{projectName} 下还没有任务</div>
-      <div className="muted" style={{ fontSize: "var(--fs-sm)", textAlign: "center" }}>
-        任务等同于一个会话，同一项目下的任务共享这份工作区与项目规则。
-      </div>
-      <button type="button" className="btn" onClick={() => newTaskInProject(projectId)}>
+    <div className="empty-state">
+      <div className="empty-state__mark" aria-hidden="true"><Icon name="folder" size={25} /></div>
+      <h1 className="empty-state__title">{projectName}</h1>
+      <p className="empty-state__desc">这个项目还没有会话。</p>
+      <button type="button" className="btn btn--primary" onClick={() => newTaskInProject(projectId)}>
         <Icon name="plus" size={14} />
-        新建任务
+        新建项目会话
       </button>
     </div>
   );
@@ -130,6 +136,7 @@ function NoticeToast() {
  * 让「应用起来要准备什么」有一个明确且唯一的入口。
  */
 export function AppShell() {
+  useBrowserAnnotations();
   const view = useAppStore((state) => state.view);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
   const rightPanelOpen = useAppStore((state) => state.rightPanelOpen);
@@ -137,6 +144,7 @@ export function AppShell() {
   const rightPanelMaximized = useAppStore((state) => state.rightPanelMaximized);
   /** 是否正在拖动右栏分隔条：拖动期间关掉列宽过渡，否则列宽会追着动画走、拖不跟手 */
   const [resizingRightPanel, setResizingRightPanel] = useState(false);
+  const commandPaletteOpen = useAppStore((state) => state.commandPaletteOpen);
   const setCommandPaletteOpen = useAppStore((state) => state.setCommandPaletteOpen);
   const toggleTerminal = useAppStore((state) => state.toggleTerminal);
   const terminalOpen = useAppStore((state) => state.terminalOpen);
@@ -154,6 +162,7 @@ export function AppShell() {
 
   // 主界面挂载期间把会话记录与产物同步到缓存路径
   useCacheSync();
+  useVideoWorker();
   useKnowledgeSync();
 
   // 拖放统一路由：图纸导入工作目录、其余文件转交输入框当附件（幂等，只装一次监听）
@@ -188,6 +197,15 @@ export function AppShell() {
   // 启动时扫描一次技能并读取产物列表与自动化任务，缓存目录变更后重新读取；
   // 技能扫描同时会刷新技能索引 SKILLS.md
   const cachePath = useAppStore((state) => state.cachePath);
+  useEffect(() => {
+    if (!cachePath) return;
+    void retireLegacyHost(cachePath).catch((error: unknown) => {
+      if (useAppStore.getState().cachePath === cachePath) {
+        const message = error instanceof Error ? error.message : String(error);
+        useAppStore.getState().showNotice(message);
+      }
+    });
+  }, [cachePath]);
   const loadSkills = useAppStore((state) => state.loadSkills);
   const loadAgents = useAppStore((state) => state.loadAgents);
   const loadMcpServers = useAppStore((state) => state.loadMcpServers);
@@ -295,14 +313,15 @@ export function AppShell() {
       <header className="titlebar" data-tauri-drag-region>
         <img className="brand-mark brand-mark--sm" src="/logo.png" alt="" />
         <span className="titlebar__brand">{APP_NAME}</span>
-        <span className="titlebar__crumb">
-          {project ? `${project.name} / ${VIEW_TITLE[view]}` : VIEW_TITLE[view]}
-        </span>
+        {project && <span className="titlebar__crumb" title={project.name}>{project.name}</span>}
         <span className="spacer" />
         <div className="titlebar__actions">
           <IconButton
             icon="search"
             label={`命令面板 (${shortcutHint("K")})`}
+            title={`命令面板 (${shortcutHint("K")})`}
+            aria-haspopup="dialog"
+            aria-expanded={commandPaletteOpen}
             onClick={() => setCommandPaletteOpen(true)}
           />
           {/* 集成终端开关只保留会话头部一处：顶栏重复入口已移除，⌘J 快捷键仍全局可用 */}
@@ -325,14 +344,13 @@ export function AppShell() {
               */}
               <header className="main-head main-head--management">
                 <div className="main-head__identity">
-                  <div className="main-head__eyebrow">OCTOPUSES / {view.toUpperCase()}</div>
                   <h1 className="main-head__title">{VIEW_TITLE[view]}</h1>
-                  <div
+                  {project?.path && <div
                     className="main-head__path main-head__workspace"
-                    title={project?.path || undefined}
+                    title={project.path}
                   >
-                    {project?.path || "未选择项目目录"}
-                  </div>
+                    {project.path}
+                  </div>}
                 </div>
               </header>
               <Suspense fallback={<div className="panel-empty" role="status">正在加载页面…</div>}>
@@ -370,7 +388,9 @@ export function AppShell() {
       <CommandPalette />
       <NoticeToast />
       <ProjectDialog />
+      <WorkflowDialog />
       <AutomationScheduler />
+      <GoalWorker />
     </div>
   );
 }

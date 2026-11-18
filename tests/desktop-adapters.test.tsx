@@ -4,7 +4,9 @@ import { clearCache, initCacheDir, readCacheFile, writeCacheFile } from "../src/
 import { writeArtifact, readArtifact, writeArtifactBytes, readArtifactBytes, listArtifacts } from "../src/app/desktop/artifacts";
 import { ensureSessionDb, saveStoredConversation, getStoredConversation, listStoredConversations, deleteStoredConversation, type StoredConversation } from "../src/app/desktop/sessions";
 import { listParallelBatches } from "../src/app/desktop/parallel";
-import { persistAutomations } from "../src/app/state/automations";
+import { flushAutomationWrites, persistAutomations } from "../src/app/state/automations";
+import { useAppStore } from "../src/app/state";
+import { DEFAULT_KNOWLEDGE_INDEX_AUTOMATION } from "../src/automations/samples";
 import { persistParallelBatch } from "../src/app/state/parallel";
 import type { ParallelBatch } from "../src/app/types";
 
@@ -80,4 +82,30 @@ test("状态落盘辅助函数使用显式缓存目录，自动化与并行批�
   assert.equal(await readCacheFile(second, "automations/tasks.json"), null);
   assert.deepEqual(await listParallelBatches(first), []);
   assert.deepEqual(await listParallelBatches(second), [batch]);
+});
+
+test("本地索引立即运行保留定时计划，完成记录落盘并可从异常退出恢复", async () => {
+  const scope = "/adapter-automation";
+  const task = { ...DEFAULT_KNOWLEDGE_INDEX_AUTOMATION, enabled: true, nextRunAt: Date.now() + 60_000 };
+  useAppStore.setState({ cachePath: scope, automations: [task], automationRuns: [], threads: [] });
+  const request = useAppStore.getState().startAutomationRun(task.id, "manual");
+  assert.ok(request);
+  assert.equal(request.threadId, "");
+  assert.equal(useAppStore.getState().threads.length, 0);
+  assert.equal(useAppStore.getState().automations[0].nextRunAt, task.nextRunAt);
+  assert.equal(useAppStore.getState().startAutomationRun(task.id, "schedule"), null);
+  useAppStore.getState().updateAutomationRun(request.runId, { status: "running" });
+  useAppStore.getState().updateAutomationRun(request.runId, { status: "success", result: "索引完成" });
+  await flushAutomationWrites(scope);
+  const saved = JSON.parse((await readCacheFile(scope, "automations/runs.json"))!);
+  assert.equal(saved[0].status, "success");
+  assert.equal(saved[0].result, "索引完成");
+
+  persistAutomations(scope, [task], [{ ...saved[0], status: "running" }]);
+  await flushAutomationWrites(scope);
+  useAppStore.setState({ automationRuns: [] });
+  await useAppStore.getState().loadAutomations();
+  assert.equal(useAppStore.getState().automationRuns[0].status, "aborted");
+  assert.ok(useAppStore.getState().startAutomationRun(task.id, "manual"));
+  await flushAutomationWrites(scope);
 });

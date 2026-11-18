@@ -29,7 +29,10 @@ pub async fn computer_action(app: String, action: Value) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || execute(&app, &action, epoch)).await.map_err(|e| e.to_string())?
 }
 #[cfg(not(target_os = "macos"))]
-fn execute(_: &str, _: &Value, _: u64) -> Result<(), String> { Err("电脑操作助手目前仅支持 macOS".into()) }
+fn execute(app: &str, a: &Value, epoch: u64) -> Result<(), String> {
+    if CANCEL_EPOCH.load(Ordering::SeqCst) != epoch { return Err("电脑操作已停止".into()); }
+    crate::computer_cross::perform(app, a)
+}
 #[cfg(target_os = "macos")]
 fn execute(app: &str, a: &Value, epoch: u64) -> Result<(), String> {
     if CANCEL_EPOCH.load(Ordering::SeqCst) != epoch { return Err("电脑操作已停止".into()); }

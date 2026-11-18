@@ -1,22 +1,35 @@
 mod agents;
+mod audio;
+mod audio_segments;
+mod audio_source;
 mod automation;
 mod cache;
 mod client_api;
 mod control;
 mod computer;
+mod computer_cross;
+mod browser_preview;
+mod companion;
 mod fileops;
 mod frontmatter;
 mod git;
+mod git_handoff;
+mod review;
 mod json_store;
 mod knowledge;
 mod knowledge_db;
 mod launch_agent;
+mod background_cross;
 mod mcp;
+mod mcp_http;
+mod office;
 mod model_proxy;
+mod video;
 mod parallel;
 mod platform;
 mod pty;
 mod sandbox;
+mod sandbox_cross;
 mod session_db;
 mod shell;
 mod skills;
@@ -50,29 +63,33 @@ fn session_exit_ready(app: tauri::AppHandle) {
 /// 所有后端命令都必须在这里注册，漏注册的命令在运行时才会以「命令未找到」暴露，
 /// 因此这里也是「后端对外提供哪些能力」的唯一清单。
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
+        if launch_agent::wake_from_args(args.into_iter().skip(1)).is_none() {
+            tray::restore_main_window(app);
+        } else {
+            trace::write("定时唤起遇到已运行客户端，由应用内调度器处理");
+        }
+    }));
+    builder
         .manage(workspace::WorkspaceState::default())
         .manage(pty::PtyManager::default())
         .manage(control::CdpState::default())
         .manage(automation::AutomationSchedulerState::default())
         .manage(model_proxy::ModelProxyState::default())
+        .manage(audio_segments::AudioSegmentsState::default())
+        .manage(audio_source::AudioSourcesState::default())
         .manage(knowledge::KnowledgeState::default())
         .setup(|app| {
-            use tauri::{Emitter, Manager};
+            use tauri::Manager;
             // 埋点：先记下启动现场，之后无论进程怎么消失，日志里都留有「它确实启动过」的证据
             trace::write(&describe_startup());
             let handle = app.handle().clone();
             match launch_agent::wake_task_id() {
-                // 被系统定时项唤起：记下待执行任务并广播。前端可能还没注册监听，
-                // 因此同时留一份在托管状态里，由 automation_take_wake 兜底取回。
+                // 等前端恢复会话、计划和模型配置后主动领取，避免初始化时丢失事件。
                 Some(task_id) => {
                     trace::write(&format!("启动参数指定待执行任务：{task_id}"));
-                    let _ = handle.emit(
-                        "automation-wake",
-                        automation::AutomationWakeEvent {
-                            automation_id: task_id.clone(),
-                        },
-                    );
                     automation::mark_wake(&handle, task_id);
                 }
                 // 正常启动：清掉指向旧可执行文件路径的残留定时项，随后由前端用当前路径重新注册
@@ -92,6 +109,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![
+            browser_preview::browser_preview_open,
+            companion::integration_paths,
+            companion::prepare_container,
+            companion::companion_start,
+            companion::companion_request,
+            companion::companion_retire_legacy,
             session_exit_listening,
             session_exit_ready,
             knowledge::knowledge_model_status,
@@ -105,6 +128,8 @@ pub fn run() {
             cache::cache_init,
             cache::cache_info,
             cache::cache_write,
+            cache::cache_write_atomic,
+            cache::cache_read_optional,
             cache::cache_append,
             cache::cache_read,
             cache::cache_clear,
@@ -130,8 +155,22 @@ pub fn run() {
             session_db::usage_record,
             session_db::usage_summary,
             model_proxy::model_stream,
+            audio_segments::audio_prepare,
+            audio_segments::audio_transcribe_segment,
+            audio_segments::audio_release,
+            audio_source::audio_inspect,
+            audio_source::audio_stage_create,
+            audio_source::audio_stage_append,
+            audio_source::audio_stage_finish,
+            audio_source::audio_stage_release,
+            audio_source::audio_checkpoint_save,
+            video::video_download,
+            fileops::video_preview_path,
+            session_db::video_jobs,
+            session_db::video_save_job,
             model_proxy::model_abort,
             model_proxy::model_fetch,
+            office::office_render,
             mcp::mcp_list_servers,
             mcp::mcp_save_server,
             mcp::mcp_delete_server,
@@ -177,6 +216,8 @@ pub fn run() {
             git::git_repository_info,
             git::git_read_diff,
             git::git_list_worktrees,
+            git_handoff::git_handoff,
+            review::review_github,
             git::git_create_worktree,
             git::git_remove_worktree,
             git::git_stage,
@@ -278,7 +319,10 @@ fn handle_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
                 let _ = app.emit("session-exit-requested", ());
             }
         }
-        RunEvent::Exit => trace::write("进程退出 Exit"),
+        RunEvent::Exit => {
+            companion::stop_children();
+            trace::write("进程退出 Exit");
+        }
         _ => {}
     }
 }

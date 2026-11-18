@@ -1,3 +1,7 @@
+import { generateMemories } from "../memories/generate";
+import { messagePlainText } from "../conversation/transcript";
+import { journalUpdate } from "../tasks/journal";
+import { changeGoal, taskKey, taskState } from "../tasks/store";
 import { useCallback } from "react";
 
 import { nextId } from "../app/ids";
@@ -32,6 +36,8 @@ export function useAgentRun() {
    */
   const stop = useCallback((threadId?: string) => {
     const target = typeof threadId === "string" ? threadId : useAppStore.getState().activeThreadId;
+    const goalKey = taskKey(useAppStore.getState().cachePath, target);
+    if (taskState(goalKey).goal?.status === "active") changeGoal(goalKey, "paused");
     stopThreadRun(target);
   }, []);
 
@@ -43,19 +49,24 @@ export function useAgentRun() {
       attachments: MessageAttachment[],
       options: AgentRunOptions = {},
     ): Promise<AgentRunOutcome> => new Promise((resolve) => {
+      const scope = useAppStore.getState().cachePath;
+      const requestId = nextId("request");
       const request: AgentRequest = {
-        id: nextId("request"),
+        id: requestId,
         threadId,
         prompt,
         attachments,
         source: options.source ?? "user",
         automationRunId: options.automationRunId ?? null,
         regenerateFrom: options.regenerateFrom,
-        resolve,
+        resolve: (outcome) => {
+          const current = useAppStore.getState(); const model = current.modelConfig;
+          if (outcome === "success" && model && taskState(taskKey(scope, threadId)).mode !== "plan" && (!taskState(taskKey(scope, threadId)).goal || taskState(taskKey(scope, threadId)).goal?.status === "complete") && !current.messages[threadId]?.at(-1)?.items.some((i) => i.type === "question")) void generateMemories(scope, threadId, current.threads.find((t) => t.id === threadId)?.projectId ?? "", (current.messages[threadId] ?? []).filter((m) => m.role === "user" || m.role === "assistant").map((m) => `${m.role}: ${messagePlainText(m)}`).join("\n"), model).catch((error) => current.showNotice(`记忆提炼失败：${String(error)}`));
+          void journalUpdate(scope, requestId, { status: outcome }).catch((error) => useAppStore.getState().showNotice(`任务日志保存失败：${String(error)}`)); resolve(outcome); },
       };
       // 默认模式按「目标会话」是否在运行判定：别的会话在跑不影响本会话直接开跑
       const mode = options.mode ?? (runSlot(threadId).active ? "queue" : "run");
-      enqueueRequest(request, mode, execute);
+      void journalUpdate(scope, request.id, { threadId, prompt, attachments, status: "queued", createdAt: Date.now() }).then(() => { if (useAppStore.getState().cachePath !== scope) { request.resolve("aborted"); return; } enqueueRequest(request, mode, execute); }).catch((error) => { useAppStore.getState().showNotice(`任务未启动，无法保存恢复日志：${String(error)}`); resolve("failed"); });
     }),
     [execute],
   );

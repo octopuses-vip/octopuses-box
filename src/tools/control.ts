@@ -12,7 +12,7 @@
 
 import { computerClick, openInBrowser, runBrowserScript, runComputerScript, takeScreenshot, type ControlBrowser, type ControlBrowserAction } from "../app/desktop/control";
 import { writeArtifactBytes } from "../app/desktop/artifacts";
-import { supportsDesktopAutomation } from "../app/platform";
+import { isMac, supportsDesktopAutomation } from "../app/platform";
 import type { ChatTool } from "../model/client";
 import { CDP_ACTIONS, CDP_WRITE_ACTIONS, runCdpAction } from "./cdp";
 
@@ -186,7 +186,7 @@ export const DESKTOP_AUTOMATION_TOOL_NAMES = [
 
 /** 按当前平台筛选可挂载的自动化工具：非 macOS 剔除桌面自动化四项 */
 export function controlToolsForPlatform(): ChatTool[] {
-  if (supportsDesktopAutomation()) return CONTROL_TOOLS;
+  if (supportsDesktopAutomation()) return isMac() ? CONTROL_TOOLS : CONTROL_TOOLS.filter((tool) => ![BROWSER_SCRIPT_TOOL_NAME, COMPUTER_SCRIPT_TOOL_NAME].includes(tool.function.name));
   return CONTROL_TOOLS.filter(
     (tool) => !DESKTOP_AUTOMATION_TOOL_NAMES.includes(tool.function.name),
   );
@@ -200,6 +200,7 @@ export function controlToolsForPlatform(): ChatTool[] {
  * 写进常驻系统消息，模型拿不到可执行信息，只是白占上下文。
  */
 export function buildControlHint(): string {
+  if (supportsDesktopAutomation() && !isMac()) return "你可以使用 browser_cdp 操作独立浏览器，browser_live 操作已配对并授权的网站；桌面任务用 computer_assistant，Windows 目标填写进程名，Linux/X11 填写 WM_CLASS。screenshot 和 computer_click 可截图和点击；执行后重新截图验证，未授权应用时先提示用户配置允许列表。";
   if (!supportsDesktopAutomation()) {
     return [
       "你可以在本机做浏览器自动化：",

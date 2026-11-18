@@ -29,7 +29,9 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "preview": "vite preview",
     "cv:assets": "node scripts/sync-cv-assets.mjs",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "test:host": "node --test tests/companion.test.mjs"
   },
   "dependencies": {
     "@huggingface/tokenizers": "0.2.0",

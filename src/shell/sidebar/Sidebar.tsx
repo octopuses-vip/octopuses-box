@@ -2,28 +2,27 @@ import { useEffect, useState } from "react";
 
 import { useAppStore } from "../../app/state";
 import type { NavKey } from "../../app/types";
-import { Icon } from "../../components/Icon";
+import { Icon, type IconName } from "../../components/Icon";
 import { isStandaloneThread } from "../../project/projects";
 import { ThreadList } from "./ThreadList";
 
 const NAV_ITEMS: {
   key: NavKey;
-  icon: "terminal" | "clock" | "sparkles" | "cube" | "book" | "code";
+  icon: IconName;
   label: string;
 }[] = [
   { key: "knowledge", icon: "book", label: "知识库" },
   { key: "mcp", icon: "terminal", label: "MCP" },
-  { key: "ssh", icon: "terminal", label: "远程主机" },
+  { key: "ssh", icon: "globe", label: "远程主机" },
   { key: "automations", icon: "clock", label: "自动化" },
   { key: "skills", icon: "sparkles", label: "技能" },
   { key: "agents", icon: "cube", label: "Agent" },
   { key: "tools", icon: "code", label: "工具" },
+  { key: "settings", icon: "settings", label: "设置" },
 ];
 
 /**
  * 左栏（开发者 Jan）：会话列表与归档、任务页入口、以及技能 / MCP / SSH / 自动化等设置入口。
- *
- * 各类资源的「已启用数量」徽标都在这里汇总，便于一眼看出当前生效的能力范围。
  */
 export function Sidebar() {
   const view = useAppStore((state) => state.view);
@@ -35,27 +34,11 @@ export function Sidebar() {
   const activeProjectId = useAppStore((state) => state.activeProjectId);
   const setActiveProject = useAppStore((state) => state.setActiveProject);
   const openThread = useAppStore((state) => state.openThread);
-  const skills = useAppStore((state) => state.skills);
-  const disabledSkillIds = useAppStore((state) => state.disabledSkillIds);
-  const automations = useAppStore((state) => state.automations);
-  const agents = useAppStore((state) => state.agents);
   const projects = useAppStore((state) => state.projects);
   const openProjectDialog = useAppStore((state) => state.openProjectDialog);
   const removeProject = useAppStore((state) => state.removeProject);
-  const mcpServers = useAppStore((state) => state.mcpServers);
-  const sshHosts = useAppStore((state) => state.sshHosts);
-
-  const enabledSkillCount = skills.filter((skill) => !disabledSkillIds.includes(skill.id)).length;
-  const enabledMcpCount = mcpServers.filter((server) => server.enabled).length;
-  /** 只有启用的主机才会把远程工具挂给模型，因此徽标统计启用数 */
-  const enabledSshCount = sshHosts.filter((host) => host.enabled).length;
-  // 只统计会定时触发的任务：仅手动触发的任务常驻启用也不该算作「在跑的自动化」
-  const scheduledAutomationCount = automations.filter(
-    (task) => task.enabled && task.intervalMinutes > 0,
-  ).length;
-
   const [projectsOpen, setProjectsOpen] = useState(true);
-  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(true);
   /** 已展开任务的项目 id：任务归属在各自项目下，因此展开状态按项目记录 */
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(new Set());
   /** 已点过一次删除、等待二次确认的项目 id（删除会连带影响该项目的会话归属） */
@@ -106,78 +89,25 @@ export function Sidebar() {
     (thread) => isStandaloneThread(thread) && !thread.parentThreadId,
   );
 
-/** 函数级说明（开发者 Jan）：执行 badgeFor 的单一职责，并返回可供调用方继续处理的结果。 */
-  const badgeFor = (key: NavKey): string | undefined => {
-    if (key === "mcp") return String(enabledMcpCount);
-    if (key === "ssh") return String(enabledSshCount);
-    if (key === "automations") return String(scheduledAutomationCount);
-    if (key === "skills") return String(enabledSkillCount);
-    if (key === "agents") return String(agents.length);
-    return undefined;
-  };
-
   return (
     <aside className="sidebar">
-      <nav className="sidebar__rail" aria-label="主导航">
-        <div className="sidebar__rail-main">
-          <button
-            type="button"
-            className={view === "search" ? "sidebar__rail-item sidebar__rail-item--active" : "sidebar__rail-item"}
-            aria-label="搜索"
-            title="搜索"
-            data-tooltip="搜索"
-            onClick={() => setView("search")}
-          >
-            <Icon name="search" size={16} />
-          </button>
-          {NAV_ITEMS.map((item) => (
-            <button
-              type="button"
-              key={item.key}
-              className={view === item.key ? "sidebar__rail-item sidebar__rail-item--active" : "sidebar__rail-item"}
-              aria-label={item.label}
-              aria-current={view === item.key ? "page" : undefined}
-              title={item.label}
-              data-tooltip={item.label}
-              onClick={() => setView(item.key)}
-            >
-              <Icon name={item.icon} size={16} />
-              {badgeFor(item.key) ? <span className="sidebar__rail-badge">{badgeFor(item.key)}</span> : null}
-            </button>
-          ))}
-        </div>
-        <div className="sidebar__rail-footer">
-          <button
-            type="button"
-            className={view === "settings" ? "sidebar__rail-item sidebar__rail-item--active" : "sidebar__rail-item"}
-            aria-label="设置"
-            title="设置"
-            data-tooltip="设置"
-            onClick={() => setView("settings")}
-          >
-            <Icon name="settings" size={16} />
-          </button>
-        </div>
-      </nav>
-
-      <div className="sidebar__workspace">
+      <div className="sidebar__header">
+        <button type="button" className="sidebar__new-chat" title="新建独立会话" onClick={newChat}>
+          <Icon name="pencil" size={17} />
+          <span>新建会话</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar__search"
+          aria-label="搜索"
+          aria-current={view === "search" ? "page" : undefined}
+          title="搜索"
+          onClick={() => setView("search")}
+        >
+          <Icon name="search" size={17} />
+        </button>
+      </div>
       <div className="sidebar__scroll">
-        <div className="sidebar__workspace-label">工作空间 <span>WORKSPACE</span></div>
-        {/*
-          顶部行只保留「新建会话」：客户端不再连接管理端，也不再展示模型来源与账号信息。
-        */}
-        <div className="sidebar__top-row sidebar__top-row--single">
-          {/* 会话是独立临时的上下文：不依赖任何项目，任何时候都能开一个全新会话 */}
-          <button
-            type="button"
-            className="nav-item sidebar__new-chat"
-            title="开启一个全新的会话"
-            onClick={newChat}
-          >
-            <Icon name="plus" size={15} />
-            <span className="nav-item__label">新建会话</span>
-          </button>
-        </div>
         <div className="sidebar__section">
           <div className="sidebar__section-head">
             <button
@@ -192,7 +122,7 @@ export function Sidebar() {
                 className={projectsOpen ? "tree-chevron tree-chevron--open" : "tree-chevron"}
               />
               项目
-              <span className="sidebar__count">{projects.length}</span>
+              {projects.length > 0 && <span className="sidebar__count">{projects.length}</span>}
             </button>
             <button
               type="button"
@@ -353,7 +283,19 @@ export function Sidebar() {
           </div>
         ) : null}
       </div>
-      </div>
+      <nav className="sidebar__destinations" aria-label="主导航">
+        {NAV_ITEMS.map(({ key, icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            aria-current={view === key ? "page" : undefined}
+            onClick={() => setView(key)}
+          >
+            <Icon name={icon} size={17} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </aside>
   );
 }

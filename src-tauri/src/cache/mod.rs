@@ -12,6 +12,7 @@ mod layout;
 
 pub(crate) use artifacts::artifact_path;
 pub(crate) use base64::base64_encode;
+pub(crate) use base64::base64_decode;
 pub use commands::*;
 
 #[cfg(test)]

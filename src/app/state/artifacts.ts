@@ -18,7 +18,7 @@ import { effectiveWorkspacePath } from "./workspace";
  * 右栏顶栏当前应显示的 tab（数组顺序即顶栏顺序）。
  *
  * 顶栏不做全量展示：某个 tab 没有真实内容就不出现——「差异」要有 diff、「来源」要有检索结果、
- * 「图片」要有图片产物、「3D」要有图纸；全部为空时右栏自动收起（见 RightPanel）。
+ * 「图片」要有图片产物、「3D」要有图纸。没有标签时，手动展开的面板显示空态。
  *
  * 「文件」与「网页」是例外（开发者 Jan）：只要当前会话能定位到产物目录就保留这两个 tab，
  * 目录空着也在空态里显示目录的绝对路径。否则老会话的产物一旦不在预期目录里，tab 会凭空消失，
@@ -35,11 +35,13 @@ export function rightPanelTabs(
   unresolvedReviewCount = 0,
   hasDrawings = false,
   hasArtifactDir = false,
+  previewName?: string,
 ): RightTab[] {
   const tabs: RightTab[] = [];
-  if (artifacts.length > 0 || hasArtifactDir) tabs.push("files");
-  if (artifacts.some((artifact) => isHtmlArtifact(artifact.name)) || hasArtifactDir) tabs.push("web");
-  if (artifacts.some((artifact) => artifact.kind === "image")) tabs.push("media");
+  if (artifacts.length > 0 || hasArtifactDir || previewName) tabs.push("files");
+  if (artifacts.some((artifact) => isHtmlArtifact(artifact.name)) || hasArtifactDir ||
+    (previewName && isHtmlArtifact(previewName))) tabs.push("web");
+  if (artifacts.some((artifact) => artifact.kind === "image" || artifact.kind === "video")) tabs.push("media");
   if (hasDrawings) tabs.push("model");
   if (diffFiles.length > 0 || gitDiffStatus !== "idle") tabs.push("diff");
   if (unresolvedReviewCount > 0) tabs.push("review");
@@ -125,15 +127,18 @@ export function artifactGitignoreEntry(
   return { file: `${workspacePath}/.gitignore`, entry: `${PROJECT_OUTPUT_DIR}/` };
 }
 
-/**
- * 解析 Markdown 正文里的相对链接（开发者 Jan）。
- *
- * 模型在正文里引用本轮产出的文件时写的是相对路径（`output/report.md`、`![](charts/a.png)`），
- * 点击应落回应用内预览而不是扔给系统浏览器。这里只做「链接文本 → 目标位置」的纯解析：
- * - 纯文件名：先在产物目录里找同名文件，找不到再按工作区相对路径解释
- * - 带路径：剥掉 `./` 前缀，去掉 URL 编码后按工作区相对路径解释
- * - `http(s)`、锚点、`mailto:` 等一律返回 null，由调用方走外部打开
- */
+/** 本地链接只由应用预览，避免把文件协议交给 WebView 导航。 */
+export const LOCAL_FILE_LINK = /^(?:file|sandbox):/i;
+
+/** 判断 Markdown 链接是否应由文件预览接管。 */
+export function isMarkdownFileLink(href: string): boolean {
+  const value = href.trim();
+  return LOCAL_FILE_LINK.test(value) ||
+    Boolean(value && !value.startsWith("#") && !value.startsWith("//") &&
+      (!/^[a-z][a-z\d+.-]*:/i.test(value) || /^[a-z]:[\\/]/i.test(value)));
+}
+
+/** 解析已列出的产物和当前工作区内的文件链接。 */
 export function resolveMarkdownLinkTarget(
   href: string,
   context: {
@@ -143,22 +148,47 @@ export function resolveMarkdownLinkTarget(
   },
 ): FileLocation | null {
   const trimmed = href.trim();
-  if (!trimmed || /^(https?:|mailto:|#|javascript:|data:)/i.test(trimmed)) return null;
-  const decoded = (() => {
-    try {
-      return decodeURIComponent(trimmed);
-    } catch {
-      return trimmed;
-    }
-  })();
-  const name = decoded.replace(/^\.\//, "").split(/[?#]/)[0].trim();
-  if (!name || name.includes("..")) return null;
-  // 纯文件名优先命中产物列表（图片 / PDF / 文档都列在这里）
-  if (!name.includes("/") && context.artifacts.some((item) => item.name === name)) {
-    if (context.artifactDir) return { kind: "artifact", dir: context.artifactDir, name };
+  if (!isMarkdownFileLink(trimmed)) return null;
+  // URL 参数和锚点不属于路径。先分离，再解码，保留文件名中的 %23 或 %3F。
+  const rawPath = trimmed.split(/[?#]/, 1)[0];
+  let path: string;
+  try {
+    path = decodeURIComponent(rawPath).replaceAll("\\", "/");
+  } catch {
+    return null;
   }
-  if (!context.workspacePath) return null;
-  return { kind: "workspace", projectPath: context.workspacePath, path: name };
+  if (!path || path.includes("\0") || path.split("/").includes("..")) return null;
+
+  const sandbox = /^sandbox:\/mnt\/data\//i.test(path);
+  if (sandbox) {
+    path = path.slice("sandbox:/mnt/data/".length);
+  } else if (/^file:/i.test(path)) {
+    const localPath = /^file:\/\/(?:localhost)?(\/[^/].*)$/i.exec(path)?.[1];
+    if (!localPath) return null;
+    path = localPath.replace(/^\/(?=[a-z]:\/)/i, "");
+  }
+  if (path.startsWith("//") || (/^[a-z][a-z\d+.-]*:/i.test(path) && !/^[a-z]:\//i.test(path))) return null;
+
+  const absolute = path.startsWith("/") || /^[a-z]:\//i.test(path);
+  const relative = path.replace(/^(?:\.\/)+/, "");
+  const artifactRoot = context.artifactDir?.replaceAll("\\", "/").replace(/\/+$/, "");
+  const artifactName = absolute
+    ? artifactRoot && path.startsWith(`${artifactRoot}/`)
+      ? path.slice(artifactRoot.length + 1)
+      : null
+    : relative.replace(/^output\//, "");
+  if (context.artifactDir && artifactName && !artifactName.includes("/") &&
+      context.artifacts.some((item) => item.name === artifactName)) {
+    return { kind: "artifact", dir: context.artifactDir, name: artifactName };
+  }
+  if (!context.workspacePath || sandbox || !relative || relative === "." || relative.endsWith("/")) return null;
+  const workspaceRoot = context.workspacePath.replaceAll("\\", "/").replace(/\/+$/, "");
+  const workspaceRelative = absolute
+    ? path.startsWith(`${workspaceRoot}/`) ? path.slice(workspaceRoot.length + 1) : ""
+    : relative;
+  return workspaceRelative
+    ? { kind: "workspace", projectPath: context.workspacePath, path: workspaceRelative }
+    : null;
 }
 
 /**

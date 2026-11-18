@@ -22,6 +22,7 @@ export const createProjectsSlice: StoreSlice<
       id: nextId("proj"),
       name: input.name.trim().length > 0 ? input.name.trim() : "未命名项目",
       path: input.path.trim(),
+      folders: [...new Set((input.folders ?? []).map((p) => p.trim()).filter((p) => p && p !== input.path.trim()))],
       mcpIds: input.mcpIds ?? [],
       skillIds: input.skillIds ?? [],
       sshHostIds: input.sshHostIds ?? [],

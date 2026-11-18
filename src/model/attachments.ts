@@ -123,6 +123,7 @@ export type AttachmentResult =
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
@@ -230,6 +231,7 @@ export function bytesToDataUrl(mime: string, base64: string): string {
 export function toUserContent(
   text: string,
   attachments: MessageAttachment[],
+  includeImages = true,
 ): string | ChatContentPart[] {
   if (attachments.length === 0) return text;
 
@@ -241,6 +243,7 @@ export function toUserContent(
     body += `${body.trim().length > 0 ? "\n\n" : ""}<file name="${file.name}">\n${file.text ?? ""}\n</file>`;
   }
 
+  if (!includeImages) return [body, ...images.map((image) => `[图片附件：${image.name}；ID ${image.id}]`)].filter(Boolean).join("\n");
   const parts: ChatContentPart[] = [];
   if (body.trim().length > 0) parts.push({ type: "text", text: body });
   for (const image of images) {

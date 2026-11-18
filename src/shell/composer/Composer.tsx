@@ -1,10 +1,14 @@
+import { ModePicker } from "../../tasks/ModePicker";
+import { taskKey, useTaskStore } from "../../tasks/store";
+import { useWorkflowUI } from "../../workflows/store";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useAppStore } from "../../app/state";
 import { shortcutHint } from "../../app/platform";
-import { subscribeDropSink } from "../../app/fileDrop";
+import { subscribeDropSink, restoreFiles } from "../../app/fileDrop";
+import { pickFiles } from "../../app/desktop/system";
+import { isDesktopRuntime } from "../../app/desktop/runtime";
 import type { MessageAttachment, ThreadQueuedItem } from "../../app/types";
-import { APP_NAME } from "../../app/meta";
 import type { AgentSubmitMode } from "../../hooks/useAgentRun";
 import { Icon } from "../../components/Icon";
 import { useChoose } from "../../components/ConfirmProvider";
@@ -18,6 +22,8 @@ import { EffortSlider } from "./EffortSlider";
 import { ModelPicker } from "./ModelPicker";
 import { PermissionPicker } from "./PermissionPicker";
 import { SLASH_COMMANDS, type SlashItem } from "./commands";
+import { isAudioFile, isNativeAudioFile } from "../../audio/files";
+import { transcribeAudio, transcriptAttachment, transcriptionConnection } from "../../audio/transcription";
 
 interface ComposerProps {
   prompt: string;
@@ -79,6 +85,7 @@ export function Composer({
   const submittingRef = useRef(false);
   const mountedRef = useRef(true);
   const [dragging, setDragging] = useState(false);
+  const [audioProgress, setAudioProgress] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -86,13 +93,16 @@ export function Composer({
   // 与工具栏可用宽度比较；放不下时把 Agent / 权限收进「更多」弹层，避免换行堆叠。
   const pickersRef = useRef<HTMLDivElement | null>(null);
   const probeRef = useRef<HTMLDivElement | null>(null);
-  const [pickersCollapsed, setPickersCollapsed] = useState(false);
+  const [pickerLayout, setPickerLayout] = useState<"full" | "collapsed" | "compact">("full");
   useLayoutEffect(() => {
     const group = pickersRef.current;
     const probe = probeRef.current;
     if (!group || !probe) return;
-    const check = () =>
-      setPickersCollapsed(probe.getBoundingClientRect().width > group.clientWidth + 1);
+    const check = () => {
+      const availableWidth = group.clientWidth;
+      if (availableWidth < 225) setPickerLayout("compact");
+      else setPickerLayout(probe.getBoundingClientRect().width > availableWidth + 1 ? "collapsed" : "full");
+    };
     check();
     const observer = new ResizeObserver(check);
     observer.observe(group);
@@ -120,6 +130,7 @@ export function Composer({
   const choose = useChoose();
 
   const currentModel = modelOptions.find((option) => option.id === model) ?? modelOptions[0];
+  const videoAvailable = useAppStore((s) => s.remoteModels.some((m) => m.code === s.videoModelCode) && !s.disabledToolIds.includes("generate_video"));
   const supportsImages = currentModel?.supportsImages ?? false;
 
   /** 斜杠菜单项：内置命令 + 已启用技能（技能选中后插入 `/技能名 ` 调用标记） */
@@ -144,14 +155,24 @@ export function Composer({
    */
   const addFiles = useCallback(
     (batch: Promise<AttachmentBatch>) => {
+      const audioState = useAppStore.getState();
       draft.add(batch, async (file) => {
-        if (attachmentMime(file).startsWith("image/") && !supportsImages) {
+        if (isAudioFile(file)) {
+          try {
+            const text = await transcribeAudio(file, transcriptionConnection(audioState.remoteModels, audioState.audioModelCode), undefined, (status) => {
+              if (mountedRef.current) setAudioProgress(status);
+            }, { cachePath: audioState.cachePath, scope: "local" });
+            return { ok: true, attachment: transcriptAttachment(file.name, text) };
+          } finally { if (mountedRef.current) setAudioProgress(null); }
+        }
+        if (isNativeAudioFile(file)) return { ok: false, reason: "此本地文件不是支持的音视频格式" };
+        if (attachmentMime(file).startsWith("image/") && !supportsImages && !videoAvailable) {
           return { ok: false, reason: `当前模型 ${currentModel?.label ?? model} 未开启图片输入，可在「设置 → 默认模型 → 允许图片输入」中开启` };
         }
         return createAttachment(file);
       });
     },
-    [draft, currentModel, model, supportsImages],
+    [draft, currentModel, model, supportsImages, videoAvailable],
   );
 
 /** 函数级说明（开发者 Jan）：执行 removeAttachment 的单一职责，并返回可供调用方继续处理的结果。 */
@@ -288,6 +309,19 @@ export function Composer({
   const runCommand = (id: string) => {
     onPromptChange("");
     switch (id) {
+      case "plan": {
+        const s = useAppStore.getState(); useTaskStore.getState().patch(taskKey(s.cachePath, s.activeThreadId), { mode: "plan" });
+        onPromptChange("/plan "); break;
+      }
+      case "goal": onPromptChange("/goal "); break;
+      case "memories": useWorkflowUI.getState().open("memories"); break;
+      case "worktree": useWorkflowUI.getState().open("workspace"); break;
+      case "review": useWorkflowUI.getState().open("review"); break;
+      case "browser": useWorkflowUI.getState().open("browser"); break;
+      case "video":
+        onPromptChange("/video ");
+        textareaRef.current?.focus();
+        break;
       case "model":
         setRightTab("files");
         break;
@@ -435,17 +469,20 @@ export function Composer({
               ))}
             </div>
           ) : null}
+          {videoAvailable && !supportsImages && attachments.some((a) => a.kind === "image") && (
+            <div className="attach-notice">图片可用作视频首帧。当前聊天模型仅读取附件名称。</div>
+          )}
           {notice ? (
             <div className="attach-notice" role="alert">
               <Icon name="alert" size={12} />
               {notice}
             </div>
           ) : null}
-          {pending > 0 ? <div className="attach-notice muted" role="status">正在读取附件…</div> : null}
+          {pending > 0 ? <div className="attach-notice muted" role="status">{audioProgress || "正在读取或转写附件…"}</div> : null}
           {dragging ? (
             <div className="attach-notice">
               <Icon name="image" size={12} />
-              松开鼠标即可添加图片、PDF 或文本文件
+              松开鼠标即可添加图片、PDF、音频或文本文件（音频将上传转写）
             </div>
           ) : null}
           {slashOpen ? (
@@ -475,7 +512,7 @@ export function Composer({
             rows={1}
             readOnly={submitting}
             aria-label="消息内容"
-            placeholder={`向 ${APP_NAME} 发送消息，输入 / 查看命令`}
+            placeholder="输入消息，按 / 查看命令"
             onChange={(event) => onPromptChange(event.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
@@ -487,10 +524,11 @@ export function Composer({
             <div className="composer__row-group composer__row-group--pickers" ref={pickersRef}>
               <div className="composer__model-group">
                 <ModelPicker />
-                <EffortSlider />
+                <ModePicker />
+                {pickerLayout !== "compact" && <EffortSlider />}
               </div>
-              {pickersCollapsed ? (
-                <ComposerMorePicker />
+              {pickerLayout !== "full" ? (
+                <ComposerMorePicker includeEffort={pickerLayout === "compact"} />
               ) : (
                 <>
                   <AgentPicker />
@@ -506,13 +544,17 @@ export function Composer({
             <div className="composer__probe" ref={probeRef} aria-hidden="true">
               <div className="composer__model-group">
                 <ModelPicker />
+                <ModePicker />
                 <EffortSlider />
               </div>
               <AgentPicker />
               <PermissionPicker />
             </div>
             <div className="composer__row-group composer__row-group--end">
-              <ContextChip onAddAttachments={() => fileInputRef.current?.click()} />
+              <ContextChip onAddAttachments={() => {
+                if (!isDesktopRuntime()) { fileInputRef.current?.click(); return; }
+                addFiles(pickFiles({ title: "选择附件" }).then((paths) => restoreFiles(paths.map((path) => ({ path, name: path.split(/[\\/]/).pop() ?? path, file: null })))));
+              }} />
               {/* 发送按钮在运行期间也留着（开发者 Jan）：原先它被「立即转向 / 排队」两枚按钮替换掉，
                   现在这两枚撤了、改由弹框二选一，若仍把发送按钮藏起来，鼠标用户就没有任何发送入口了 */}
               <button
@@ -540,16 +582,16 @@ export function Composer({
           </div>
         </div>
         <div className="composer-foot">
-          <span>{shortcutHint("⏎")} 发送</span>
+          <span className="composer-foot__shortcut"><kbd className="kbd">{shortcutHint("⏎")}</kbd> 发送</span>
           <span className="spacer" />
-          <span>
+          <span aria-live="polite">
             {isRunning
               ? queuedCount > 0
                 ? `运行中 · 排队 ${queuedCount}`
                 : "运行中"
               : queuedCount > 0
                 ? `排队 ${queuedCount}`
-                : "就绪"}
+                : null}
           </span>
         </div>
       </div>

@@ -5,7 +5,6 @@ body {
 }
 .nav-item,
 .thread-item__title,
-.project-node__tasks .thread-item__title,
 .settings-tabs__tab,
 .form__label,
 .btn,
@@ -53,63 +52,8 @@ button:disabled {
 .shell__main {
   background-image: radial-gradient(ellipse at 95% 0%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 48%);
 }
-.sidebar, .sidebar__workspace {
-  background: var(--bg-1);
-}
-.sidebar__rail {
-  padding: 16px 8px;
-  background: var(--bg-sunken);
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-.sidebar__rail-main {
-  gap: 8px;
-}
-.sidebar__rail-item {
-  width: 38px;
-  min-height: 38px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  color: var(--text-2);
-}
-.sidebar__rail-item--active {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-1));
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-.sidebar__rail-badge {
-  top: -3px;
-  right: -3px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  border: 2px solid var(--bg-sunken);
-}
 .sidebar__scroll {
   padding: 20px 12px;
-}
-.sidebar__workspace-label {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 4px 18px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-2);
-}
-.sidebar__workspace-label span {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: .08em;
-  color: var(--text-3);
-}
-.sidebar__new-chat {
-  height: 40px;
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
-  color: var(--accent);
 }
 .sidebar__section {
   margin-top: 20px;
@@ -268,7 +212,7 @@ button:disabled {
 }
 .badge {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: var(--fw-ui);
 }
 .form__input, .form__select, .form__textarea {
   background: var(--bg-input);
@@ -384,71 +328,6 @@ button:disabled {
 .theme-card--active {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
-}
-.empty-state {
-  position: relative;
-  width: min(100%, 860px);
-  padding: 48px 40px;
-  gap: 18px;
-}
-.empty-state__mark {
-  width: 58px;
-  height: 58px;
-  border-radius: 16px;
-  background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 15%, var(--bg-1)), var(--bg-1));
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.empty-state__eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: .12em;
-  color: var(--accent);
-}
-.empty-state__title {
-  font-family: var(--font-display);
-  font-size: clamp(24px, 3.2cqw, 36px);
-  font-weight: var(--fw-heading);
-  line-height: 1.4;
-  letter-spacing: -.035em;
-  text-wrap: balance;
-}
-.empty-state__desc {
-  max-width: 580px;
-  line-height: 1.8;
-  color: var(--text-2);
-}
-.suggestion-grid {
-  width: 100%;
-  gap: 12px;
-  margin-top: 12px;
-}
-.suggestion {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px;
-  border-radius: 12px;
-  background: var(--bg-1);
-  font-size: 13px;
-}
-.suggestion__index {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--accent);
-  align-self: flex-start;
-  padding-top: 3px;
-}
-.suggestion__text {
-  flex: 1;
-}
-.suggestion > svg {
-  flex-shrink: 0;
-  color: var(--text-3);
-}
-.suggestion:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-soft);
 }
 .chat-scroll {
   padding-top: 28px;
@@ -629,9 +508,6 @@ button:disabled {
 @media (max-width: 760px) {
   :root {
     --sidebar-width: 240px;
-  }
-  .sidebar__workspace-label span {
-    display: none;
   }
   .login {
     padding: 20px;

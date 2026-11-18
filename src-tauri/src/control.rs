@@ -625,7 +625,7 @@ fn screencapture_binary() -> &'static str {
 }
 
 /// 从 PNG 字节流里取像素宽高：IHDR 的宽高固定在第 16..24 字节（大端 u32）
-fn png_size(bytes: &[u8]) -> Result<(u32, u32), String> {
+pub(crate) fn png_size(bytes: &[u8]) -> Result<(u32, u32), String> {
     if bytes.len() < 24 || &bytes[0..8] != b"\x89PNG\r\n\x1a\n" {
         return Err("截图不是合法的 PNG。".to_string());
     }
@@ -654,7 +654,9 @@ fn screenshot_failure_hint(reason: &str) -> String {
 /// 截一张全屏图：写临时文件读回后立刻删除，不把二进制留在磁盘上
 fn capture_screenshot() -> Result<(Vec<u8>, u32, u32), String> {
     if !cfg!(target_os = "macos") {
-        return Err("屏幕截图目前仅支持 macOS。".to_string());
+        let bytes = crate::computer_cross::capture()?;
+        let (width, height) = png_size(&bytes)?;
+        return Ok((bytes, width, height));
     }
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -741,10 +743,8 @@ pub fn control_computer_click(
     }
     // 点击依赖截图与 AppleScript，二者都只在 macOS 有实现
     if !cfg!(target_os = "macos") {
-        return Err(format!(
-            "该能力仅 macOS 支持（截图 + 坐标点击），当前平台为 {}。",
-            crate::platform::os_name()
-        ));
+        crate::computer_cross::click(x, y, image_width)?;
+        return Ok(ControlResult { ok: true, output: "已点击；请重新截图确认结果。".into() });
     }
     let (logical_width, _) = desktop_point_size()?;
     // 调用方给了截图像素宽就用它；没给就现截一张推断，保证缩放换算始终基于真实像素

@@ -50,3 +50,7 @@ update.md
 *.db-shm
 .trae-html-share-packages/
 .screenshots/
+
+# Generated, platform-matched runtime packaged by prepare:runtime
+/src-tauri/runtime/
+/.octopuses-host/

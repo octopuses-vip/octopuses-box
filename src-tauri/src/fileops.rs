@@ -546,3 +546,24 @@ mod context_tests {
         assert!(read_context_path_with_limit(&path, 1024 * 1024).is_ok());
     }
 }
+
+/// Allow the WebView to stream only this selected MP4, including range requests when seeking.
+#[tauri::command]
+pub fn video_preview_path(app: tauri::AppHandle, source: FileLocation) -> Result<String, String> {
+    use tauri::Manager;
+    if matches!(source, FileLocation::Absolute { .. }) {
+        return Err("视频预览仅支持当前工作区和产物文件".into());
+    }
+    let (_, path) = resolve_source(&source)?;
+    let path = path.canonicalize().map_err(|e| e.to_string())?;
+    ensure_absolute_file(&path)?;
+    if let FileLocation::Artifact { dir, .. } = &source {
+        let root = Path::new(dir).canonicalize().map_err(|e| e.to_string())?;
+        if path.parent() != Some(root.as_path()) { return Err("视频文件位于产物目录外".into()); }
+    }
+    if !path.extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("mp4")) {
+        return Err("请选择 MP4 视频文件".into());
+    }
+    app.asset_protocol_scope().allow_file(&path).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}

@@ -15,6 +15,7 @@ export function WebPreview() {
   const artifacts = useAppStore((state) => state.artifacts);
   const activeArtifact = useAppStore((state) => state.activeArtifact);
   const artifactStatus = useAppStore((state) => state.artifactStatus);
+  const artifactError = useAppStore((state) => state.artifactError);
   const artifactDir = useAppStore((state) => effectiveArtifactDir(state));
   const loadArtifacts = useAppStore((state) => state.loadArtifacts);
   const selectArtifact = useAppStore((state) => state.selectArtifact);
@@ -26,27 +27,27 @@ export function WebPreview() {
 
   // 当前选中的不是 HTML 时，自动切到最新的 HTML 产物
   useEffect(() => {
-    if (artifactStatus === "loading") return;
+    if (artifactStatus === "loading" || artifactError) return;
     const htmlArtifacts = artifacts.filter((item) => isHtmlArtifact(item.name));
     if (htmlArtifacts.length === 0) return;
     const current = useAppStore.getState().activeArtifact;
     if (current && isHtmlArtifact(current.name)) return;
     void selectArtifact(htmlArtifacts[0].name);
-  }, [artifacts, artifactStatus, selectArtifact]);
+  }, [artifacts, artifactStatus, artifactError, selectArtifact]);
 
   const html =
     activeArtifact && isHtmlArtifact(activeArtifact.name) ? activeArtifact.content : null;
 
-  if (!html) {
+  if (html === null) {
     const hasHtml = artifacts.some((item) => isHtmlArtifact(item.name));
     return (
       <div className="panel-empty">
         <div>
-          {artifactStatus === "loading"
+          {artifactError ?? (artifactStatus === "loading"
             ? "正在读取产物…"
             : hasHtml
               ? "正在读取页面内容…"
-              : "还没有 HTML 产物。让模型生成网页（写出 .html 文件）后会自动在这里渲染。"}
+              : "还没有 HTML 产物。让模型生成网页（写出 .html 文件）后会自动在这里渲染。")}
         </div>
         {/* 与「文件」tab 一致：没有页面时也把产物目录摊开，说明该去哪儿找 */}
         {artifactDir ? <div className="panel-empty__path">{artifactDir}</div> : null}

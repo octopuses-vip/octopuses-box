@@ -16,6 +16,7 @@ export function artifactKind(name: string): ArtifactKind {
   if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"].includes(extension)) {
     return "image";
   }
+  if (extension === "mp4") return "video";
   if (extension === "pdf") return "pdf";
   if (
     [
@@ -46,6 +47,8 @@ export function artifactKind(name: string): ArtifactKind {
 export function artifactMime(name: string): string {
   const extension = name.trim().toLowerCase().split(".").pop() ?? "";
   switch (extension) {
+    case "mp4":
+      return "video/mp4";
     case "png":
       return "image/png";
     case "jpg":

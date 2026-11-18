@@ -209,7 +209,7 @@ export function McpPage() {
       <div className="page__inner">
         <p className="page__desc">
           MCP 服务配置保存在缓存目录下的 mcp/servers.json（当前：
-          {cachePath ? `${cachePath}/mcp` : "尚未配置缓存目录"}）。启用的服务会通过 stdio 启动本地进程，
+          {cachePath ? `${cachePath}/mcp` : "尚未配置缓存目录"}）。本地命令通过 stdio 启动，HTTPS URL 通过 Streamable HTTP 连接，
           列出其工具并包装成模型可调用的函数，工具名形如 mcp_&lt;服务id&gt;__&lt;工具名&gt;。
         </p>
 
@@ -300,12 +300,12 @@ export function McpPage() {
                 </div>
               </div>
 
-              {/* 启动配置：客户端就靠这三项拼出 stdio 启动方式 */}
+              {/* 本地进程使用启动参数和环境变量。 */}
               <div className="form__section">
                 <div className="form__section-title">启动配置</div>
                 <label className="form__row">
                   <span className="form__label">
-                    启动命令<span className="form__required">*</span>
+                    本地命令或 MCP URL<span className="form__required">*</span>
                   </span>
                   <input
                     className="form__input mono"
