@@ -3,7 +3,7 @@ import test from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import { WriteQueue, type WriteStatus } from "../src/cache/writeQueue";
 import { useAppStore } from "../src/app/state";
-import type { Message, Thread } from "../src/app/types";
+import type { AutomationRun, Message, Thread } from "../src/app/types";
 import { saveStoredConversation } from "../src/cache/sessionRepository";
 import { sessionMessages, sessionSnapshot } from "../src/cache/conversationSnapshot";
 import { fromStoredConversation, toStoredConversation } from "../src/cache/sessionDb";
@@ -16,6 +16,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConversationStreamBase } from "../src/conversation/ConversationStream";
 import { useAgentRun } from "../src/hooks/useAgentRun";
+import { AutomationsPage } from "../src/pages/AutomationsPage";
 
 const storage = new Map<string, string>();
 Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => storage.set(k, v), removeItem: (k: string) => storage.delete(k) } });
@@ -207,6 +208,35 @@ test("消息流实际渲染千条历史时只挂载最新100条", () => {
     assert.equal(html.includes('data-message-id="render-0"'), false);
     assert.equal(html.includes('data-message-id="render-999"'), true);
   } finally { Object.assign(initial, original); }
+});
+
+test("自动化运行记录只为存在的会话显示打开入口，并保留本地执行结果", () => {
+  const state = useAppStore.getState();
+  const initial = useAppStore.getInitialState();
+  const previousInitial = { ...initial };
+  const run: AutomationRun = {
+    id: "linked", automationId: "task", name: "有会话的运行", trigger: "schedule",
+    startedAt: 1000, finishedAt: 2000, status: "success", error: null, threadId: "available", suggestions: [],
+  };
+  try {
+    useAppStore.setState({
+      threads: [thread("available")], sessionsRestored: true, sessionsRestoreError: null, automations: [],
+      automationRuns: [
+        run,
+        { ...run, id: "stale", name: "历史运行", threadId: "deleted", result: "历史结果保留" },
+        { ...run, id: "local", name: "本地向量化", threadId: "", result: "索引进度 5/5 个分块" },
+      ],
+    });
+    Object.assign(initial, useAppStore.getState());
+    const html = renderToStaticMarkup(createElement(AutomationsPage));
+    assert.equal((html.match(/打开会话/g) ?? []).length, 1);
+    assert.match(html, /关联会话已不存在/);
+    assert.match(html, /历史结果保留/);
+    assert.match(html, /索引进度 5\/5 个分块/);
+  } finally {
+    Object.assign(initial, previousInitial);
+    useAppStore.setState(state);
+  }
 });
 
 test("退出时等待任务停止，并将未执行的排队内容恢复到文字草稿", async () => {

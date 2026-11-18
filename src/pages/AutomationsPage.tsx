@@ -47,7 +47,9 @@ export function AutomationsPage() {
   const createAutomation = useAppStore((state) => state.createAutomation);
   const toggleAutomation = useAppStore((state) => state.toggleAutomation);
   const removeAutomation = useAppStore((state) => state.removeAutomation);
-  const openThread = useAppStore((state) => state.openThread);
+  const threads = useAppStore((state) => state.threads);
+  const sessionsRestored = useAppStore((state) => state.sessionsRestored);
+  const sessionsRestoreError = useAppStore((state) => state.sessionsRestoreError);
   const projects = useAppStore((state) => state.projects);
   const agents = useAppStore((state) => state.agents);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
@@ -67,6 +69,11 @@ export function AutomationsPage() {
   const [agentId, setAgentId] = useState("");
 
   const enabledCount = automations.filter((task) => task.enabled).length;
+  const threadIds = new Set(threads.map((thread) => thread.id));
+  const sessionsReady = sessionsRestored && !sessionsRestoreError;
+  const unavailableConversation = sessionsRestoreError
+    ? "会话记录读取失败"
+    : sessionsRestored ? "关联会话已不存在" : "正在加载会话";
   const invalidCron = cron.trim().length > 0 && !parseCron(cron);
   const canSubmit = name.trim().length > 0 && prompt.trim().length > 0 && projectId.length > 0 && !invalidCron;
 
@@ -75,6 +82,15 @@ export function AutomationsPage() {
     if (await runAutomation(automationId, "manual") === null) {
       useAppStore.getState().showNotice("未能启动任务，请确认会话已恢复且没有同一任务正在运行。");
     }
+  };
+
+  const openRunConversation = (threadId: string) => {
+    const state = useAppStore.getState();
+    if (!state.sessionsRestored || state.sessionsRestoreError || !state.threads.some((thread) => thread.id === threadId)) {
+      state.showNotice("关联会话当前不可用，仍可在运行记录中查看结果。");
+      return;
+    }
+    state.openThread(threadId);
   };
 
 /** 函数级说明（开发者 Jan）：执行 resetForm 的单一职责，并返回可供调用方继续处理的结果。 */
@@ -251,6 +267,7 @@ export function AutomationsPage() {
                 task={task}
                 projects={projects}
                 agents={agents}
+                hasConversation={sessionsReady && task.threadId !== null && threadIds.has(task.threadId)}
                 busy={automationRuns.some(
                   (runItem) =>
                     runItem.automationId === task.id &&
@@ -271,45 +288,53 @@ export function AutomationsPage() {
               <div className="card__desc">任务运行后会在这里显示触发方式、完成时间和结果。</div>
             </div>
           ) : (
-            automationRuns.map((run) => (
-              <div className="card" key={run.id}>
-                <div className="list-row">
-                  <Icon name={run.trigger === "manual" ? "arrow-up" : "clock"} size={15} />
-                  <span className="list-row__main">
-                    <span className="list-row__title">{run.name}</span>
-                    <span className="list-row__desc">
-                      {run.trigger === "manual" ? "手动触发" : "定时触发"} · {RUN_STATUS[run.status] ?? run.status} · 开始{" "}
-                      {formatTime(run.startedAt)}
-                      {run.finishedAt ? ` · 结束 ${formatTime(run.finishedAt)}` : ""}
-                      {run.result ? ` · ${run.result}` : ""}
-                      {run.error ? ` · ${run.error}` : ""}
+            automationRuns.map((run) => {
+              const canOpen = sessionsReady && threadIds.has(run.threadId);
+              return (
+                <div className="card" key={run.id}>
+                  <div className="list-row">
+                    <Icon name={run.trigger === "manual" ? "arrow-up" : "clock"} size={15} />
+                    <span className="list-row__main">
+                      <span className="list-row__title">{run.name}</span>
+                      <span className="list-row__desc">
+                        {run.trigger === "manual" ? "手动触发" : "定时触发"} · {RUN_STATUS[run.status] ?? run.status} · 开始{" "}
+                        {formatTime(run.startedAt)}
+                        {run.finishedAt ? ` · 结束 ${formatTime(run.finishedAt)}` : ""}
+                        {run.result ? ` · ${run.result}` : ""}
+                        {run.error ? ` · ${run.error}` : ""}
+                        {run.threadId && !canOpen ? ` · ${unavailableConversation}` : ""}
+                      </span>
                     </span>
-                  </span>
-                  {run.threadId && <button type="button" className="btn btn--sm" onClick={() => openThread(run.threadId)}>打开会话</button>}
-                </div>
-                {run.suggestions.length > 0 ? (
-                  <div
-                    className="list-row"
-                    style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}
-                  >
-                    <span className="list-row__desc" style={{ flexBasis: "100%" }}>
-                      后续建议（点击填入新建任务表单）
-                    </span>
-                    {run.suggestions.map((suggestion) => (
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--sm"
-                        key={suggestion.title}
-                        title={suggestion.prompt}
-                        onClick={() => applySuggestion(suggestion, run.automationId)}
-                      >
-                        {suggestion.title}
+                    {run.threadId && canOpen && (
+                      <button type="button" className="btn btn--sm" onClick={() => openRunConversation(run.threadId)}>
+                        打开会话
                       </button>
-                    ))}
+                    )}
                   </div>
-                ) : null}
-              </div>
-            ))
+                  {run.suggestions.length > 0 ? (
+                    <div
+                      className="list-row"
+                      style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}
+                    >
+                      <span className="list-row__desc" style={{ flexBasis: "100%" }}>
+                        后续建议（点击填入新建任务表单）
+                      </span>
+                      {run.suggestions.map((suggestion) => (
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          key={suggestion.title}
+                          title={suggestion.prompt}
+                          onClick={() => applySuggestion(suggestion, run.automationId)}
+                        >
+                          {suggestion.title}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
@@ -322,6 +347,7 @@ function AutomationRow({
   task,
   projects,
   agents,
+  hasConversation,
   busy,
   onToggle,
   onRun,
@@ -330,6 +356,7 @@ function AutomationRow({
   task: Automation;
   projects: Project[];
   agents: AgentItem[];
+  hasConversation: boolean;
   busy: boolean;
   onToggle: () => void;
   onRun: () => void;
@@ -346,7 +373,7 @@ function AutomationRow({
         <span className="list-row__desc">
           {task.kind === "knowledge-index" ? "本地向量化" : projectName(projects, task.projectId)} · {describeSchedule(task)} · {planText} · 最近运行{" "}
           {task.lastRunAt === null ? "从未" : formatTime(task.lastRunAt)}
-          {task.threadId ? " · 复用同一会话" : ""}
+          {hasConversation ? " · 复用同一会话" : ""}
           {task.agentId ? ` · Agent ${agents.find((agent) => agent.id === task.agentId)?.name ?? task.agentId}` : ""}
         </span>
       </span>
