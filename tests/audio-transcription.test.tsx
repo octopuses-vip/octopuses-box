@@ -36,6 +36,16 @@ test("音频校验区分 原文件大小和 25 MB 上传上限，转写不会回
   assert.equal(connection.key, models[1].apiKey);
 });
 
+test("拖入音频不会发给误选的聊天模型，唯一的授权语音模型可自动选择", () => {
+  const chat = { ...models[0], code: "gpt-6.1-sol" };
+  const speech = { ...models[1], code: "gpt-transcribe" };
+  assert.throws(() => transcriptionConnection([chat, speech], chat.code), /不支持文件转写/);
+  assert.equal(transcriptionConnection([chat, speech], "").modelId, speech.code);
+  assert.throws(() => transcriptionConnection([chat, speech, { ...speech, code: "whisper-1" }], ""), /选择/);
+  const gateway = { ...chat, supportsAudioTranscription: true };
+  assert.equal(transcriptionConnection([gateway], gateway.code).modelId, gateway.code);
+});
+
 test("转写响应拒绝无效结果，并给出授权、路由和额度的操作提示", () => {
   assert.equal(parseTranscription(200, JSON.stringify({ text: "  会议记录\n第二段。  " })), "会议记录\n第二段。");
   assert.throws(() => parseTranscription(200, "<html>gateway</html>"), /JSON/);

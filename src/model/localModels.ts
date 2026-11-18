@@ -83,6 +83,7 @@ function normalizeEntry(entry: unknown, index: number): { model?: RemoteModel; e
       description: typeof item.description === "string" ? item.description.trim() : "",
       // 未写该字段时保持 undefined（而不是 false）：交给设置页的「允许图片输入」手动开关兜底
       supportsImages: typeof item.supportsImages === "boolean" ? item.supportsImages : undefined,
+      ...(typeof item.supportsAudioTranscription === "boolean" ? { supportsAudioTranscription: item.supportsAudioTranscription } : {}),
     },
     errors,
   };
@@ -152,6 +153,7 @@ export function serializeLocalModels(models: RemoteModel[]): string {
       description: model.description,
     };
     if (typeof model.supportsImages === "boolean") entry.supportsImages = model.supportsImages;
+    if (typeof model.supportsAudioTranscription === "boolean") entry.supportsAudioTranscription = model.supportsAudioTranscription;
     return entry;
   });
   return JSON.stringify(rows, null, 2);

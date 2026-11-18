@@ -14,6 +14,7 @@ import { useAppStore } from "../app/state";
 import { selectActiveThread } from "../app/storeSelectors";
 import { SCHEME_OPTIONS, THEME_PRESETS } from "../app/theme";
 import type { SettingsCategory } from "../app/types";
+import { TranscriptionModelSetting } from "../audio/TranscriptionModelSetting";
 import { DEFAULT_PERMISSION_MODE, permissionModeOption } from "../approval/permission";
 import { logCacheEvent } from "../cache/logger";
 import { useTheme } from "../hooks/useTheme";
@@ -77,8 +78,6 @@ export function SettingsPage() {
   const model = useAppStore((state) => state.model);
   const videoModelCode = useAppStore((state) => state.videoModelCode);
   const setVideoModelCode = useAppStore((state) => state.setVideoModelCode);
-  const audioModelCode = useAppStore((state) => state.audioModelCode);
-  const setAudioModelCode = useAppStore((state) => state.setAudioModelCode);
   const modelOptions = useAppStore((state) => state.modelOptions);
   const modelConfigStatus = useAppStore((state) => state.modelConfigStatus);
   const modelConfigError = useAppStore((state) => state.modelConfigError);
@@ -598,17 +597,7 @@ export function SettingsPage() {
               {remoteModels.map((item) => <option key={item.code} value={item.code}>{item.name || item.code}</option>)}
             </select>
           </label>
-          <label className="list-row">
-            <span className="list-row__main">
-              <span className="list-row__title">音频转文字模型</span>
-              <span className="list-row__desc">选择支持语音识别的模型。输入区的「音频转文字」可上传录音，音频附件也会自动转成文字。</span>
-            </span>
-            <select aria-label="音频转文字模型" value={audioModelCode} onChange={(event) => setAudioModelCode(event.target.value)}>
-              <option value="">未配置</option>
-              {audioModelCode && !remoteModels.some((item) => item.code === audioModelCode) ? <option value={audioModelCode}>原模型已不可用，请重新选择</option> : null}
-              {remoteModels.map((item) => <option key={item.code} value={item.code}>{item.name || item.code}</option>)}
-            </select>
-          </label>
+          <TranscriptionModelSetting />
           {/* 常驻显示：后台随时可能新增或下架模型，本地文件也可能被外部编辑器改过，
               用户需要能主动重新拉一次列表 */}
           <div className="login__actions" style={{ marginTop: 8 }}>

@@ -464,6 +464,8 @@ export interface RemoteModel {
    * 此时由用户在设置页的手动开关决定，判定入口见 `resolveSupportsImages`。
    */
   supportsImages?: boolean;
+  /** Optional declaration that this model accepts the file transcription endpoint. */
+  supportsAudioTranscription?: boolean;
 }
 
 /**

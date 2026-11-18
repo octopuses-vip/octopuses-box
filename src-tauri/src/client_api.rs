@@ -205,6 +205,9 @@ pub struct RemoteModel {
     /// 客户端据此回落到用户在设置页的手动开关，而不是直接把能力关死。
     #[serde(default)]
     pub supports_images: Option<bool>,
+    /// Optional capability for the file transcription endpoint.
+    #[serde(default, alias = "supports_audio_transcription")]
+    pub supports_audio_transcription: Option<bool>,
 }
 
 /// 登录请求体，字段名与服务端约定一致
