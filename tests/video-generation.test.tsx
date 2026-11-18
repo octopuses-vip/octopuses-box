@@ -13,6 +13,19 @@ const image: MessageAttachment = { id: "ref", name: "ocean.png", kind: "image", 
 const prompt = JSON.stringify({ prompt: "海浪向前涌动", ratio: "16:9", duration: 5 });
 const connection = { url: "https://video.test/api/v3", key: "mock", modelId: "ep-video" };
 
+const copyrightFailure = {
+  type: "video.generation.failed",
+  data: {
+    id: "gen-vid-example", status: "failed", generation_id: "gen-vid-example",
+    error: "The request failed because the output video may be related to copyright restrictions. Request id: trace-copyright",
+  },
+};
+const wrappedVideoFailure = ["message", "message", "msg"].reduce(
+  (message, field) => JSON.stringify({ code: "500", [field]: message }),
+  JSON.stringify(copyrightFailure),
+);
+const copyrightDetail = "服务商拒绝生成，输出视频可能涉及版权限制。\n请求 ID trace-copyright";
+
 test("文字与首帧请求共用任务协议，纯文本聊天仅传递附件引用", () => {
   const text = videoRequest(prompt, [], connection.modelId);
   assert.equal(text.body.content.length, 1);
@@ -59,6 +72,33 @@ test("统一视频接口使用网关业务信封、首帧字段和输出视频�
   assert.throws(() => videoTaskId('{"error":{"code":"422","message":"model:video,groups:[third-party] providers not found"}}', 422), (e) => e instanceof VideoApiError && e.rejected && !e.routeMissing && /没有所选模型的可用视频渠道/.test(e.message));
 });
 
+test("读取 data/request_id 响应中的任务状态，同时保留网关失败信息", () => {
+  assert.equal(videoTaskId('{"data":{"task_id":"prediction-1"},"request_id":"trace-1"}'), "prediction-1");
+  assert.throws(() => videoTaskId('{"data":{},"request_id":"trace-1"}'), /缺少任务 ID/);
+  assert.deepEqual(readVideoStatus('{"data":{"status":" running "},"request_id":"trace-1"}', "predictions"), {
+    phase: "running", detail: "",
+  });
+  assert.deepEqual(readVideoStatus('{"data":{"task_status":"succeeded","content":{"video_url":"https://cdn.test/result"}},"request_id":"trace-1"}'), {
+    phase: "downloading", detail: "", download: "https://cdn.test/result",
+  });
+  assert.deepEqual(readVideoStatus('{"data":{"status":"failed","error":{"message":"任务被拒绝"}},"request_id":"trace-1"}', "predictions"), {
+    phase: "failed", detail: "任务被拒绝",
+  });
+  assert.throws(() => readVideoStatus('{"data":{"error":{"message":"access denied"}},"request_id":"trace-1"}', "predictions", 403), /access denied/);
+  assert.throws(() => readVideoStatus('{"data":{"task_id":"prediction-1"},"request_id":"trace-1"}', "predictions"), /任务数据字段 task_id/);
+});
+
+test("网关 500 中的多层视频失败事件给出版权错误，普通网关故障仍可恢复", () => {
+  const expected = { phase: "failed", detail: copyrightDetail };
+  assert.deepEqual(readVideoStatus(wrappedVideoFailure, "predictions", 500), expected);
+  assert.deepEqual(readVideoStatus(wrappedVideoFailure, "predictions", 200), expected);
+  assert.deepEqual(readVideoStatus(JSON.stringify(copyrightFailure), "predictions", 500), expected);
+  assert.throws(() => readVideoStatus('{"code":"500","message":"upstream timed out"}', "predictions", 500),
+    (error) => error instanceof VideoApiError && !error.taskFailed && error.message === "upstream timed out");
+  assert.throws(() => videoTaskId(wrappedVideoFailure, 500),
+    (error) => error instanceof VideoApiError && error.rejected && !error.routeMissing && error.message === copyrightDetail);
+});
+
 test("原生路由明确不存在才切换统一接口，持久化协议后重启仍查询原任务", async () => {
   const oldWindow = globalThis.window;
   globalThis.window = { crypto: globalThis.crypto } as Window & typeof globalThis;
@@ -89,21 +129,40 @@ test("原生路由明确不存在才切换统一接口，持久化协议后重�
         return { status: 200, body: '{"code":0,"data":{"task_id":"prediction-1"}}' };
       }
       assert.equal(args.url, connection.url + "/predictions/prediction-1");
-      return { status: 200, body: JSON.stringify({ code: 0, data: { task_status: result, output: [{ type: "video", video: "https://cdn.test/result" }] } }) };
+      if (result === "failed") return { status: 500, body: wrappedVideoFailure };
+      if (result === "query-failed") return { status: 500, body: '{"message":"upstream timed out"}' };
+      const data = result === "success"
+        ? { status: "succeeded", output: [{ type: "video", video: "https://cdn.test/result" }] }
+        : { task_status: result };
+      return { status: 200, body: JSON.stringify({ request_id: "trace-1", data }) };
     });
     await submitVideoJob("compat", base, connection, native);
     const accepted = videoJobAt(useVideoJobs.getState().jobs, "compat", base.id)!;
     assert.equal(accepted.api, "predictions");
     assert.equal(accepted.taskId, "prediction-1");
-    stored.set("compat-restart", new Map(stored.get("compat")));
+    stored.set("compat-restart", new Map([[base.id, {
+      ...accepted, phase: "paused", detail: "视频服务响应缺少任务状态字段（返回字段 data、request_id）。",
+    }]]));
     await restoreVideoJobs("compat-restart");
-    assert(await advanceVideoJob("compat-restart", base.id, connection));
+    const queryStart = calls.length;
+    assert(await advanceVideoJob("compat-restart", base.id, connection, "resume"));
+    assert.deepEqual(calls.slice(queryStart), [`GET ${connection.url}/predictions/prediction-1`]);
     assert.equal(videoJobAt(useVideoJobs.getState().jobs, "compat-restart", base.id)?.phase, "done");
     assert.equal(calls.filter((c) => c.startsWith("POST")).length, 2);
     assert(!JSON.stringify(stored.get("compat-restart")?.get(base.id)).includes("cdn.test"));
     result = "processing";
     await advanceVideoJob("compat", base.id, connection);
     assert.equal(videoJobAt(useVideoJobs.getState().jobs, "compat", base.id)?.phase, "running");
+    result = "query-failed";
+    await advanceVideoJob("compat", base.id, connection);
+    assert.equal(stored.get("compat")?.get(base.id)?.phase, "paused");
+    result = "failed";
+    await advanceVideoJob("compat", base.id, connection, "resume");
+    assert.equal(stored.get("compat")?.get(base.id)?.phase, "failed");
+    assert.equal(stored.get("compat")?.get(base.id)?.detail, copyrightDetail);
+    const afterFailure = calls.length;
+    await advanceVideoJob("compat", base.id, connection, "resume");
+    assert.equal(calls.length, afterFailure);
     const legacy = { ...base, id: "legacy", phase: "unknown" as const, detail: "提交状态待确认，请先在服务方核对。\nError: 响应缺少任务 ID" };
     stored.set("compat-legacy", new Map([[legacy.id, legacy]]));
     await restoreVideoJobs("compat-legacy");

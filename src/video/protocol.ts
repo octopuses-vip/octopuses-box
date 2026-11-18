@@ -76,17 +76,63 @@ export const phaseLabel: Record<VideoPhase, string> = {
   downloading: "正在下载", paused: "等待继续", failed: "失败", done: "已完成", cancelled: "已取消",
 };
 
+const VIDEO_FAILURE_EVENT = "video.generation.failed";
+
 /** The gateway's API rejection is distinct from an interrupted or unrecognizable response. */
 export class VideoApiError extends Error {
-  constructor(message: string, public readonly rejected: boolean, public readonly routeMissing = false) {
+  constructor(
+    message: string,
+    public readonly rejected: boolean,
+    public readonly routeMissing = false,
+    public readonly taskFailed = false,
+  ) {
     super(message);
     this.name = "VideoApiError";
   }
 }
 
-/** Safely inspect both provider JSON and the gateway's code/data/msg envelope. */
-export function videoObject(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+function videoObject(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function firstText(...values: unknown[]): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.trim().length > 0)?.trim();
+}
+
+function errorText(data: Record<string, unknown>) {
+  return firstText(videoObject(data.error)?.message, data.error, data.msg, data.message);
+}
+
+/** Gateways can serialize an upstream failure event as the message of another error. */
+function unwrapVideoError(envelope: Record<string, unknown>) {
+  let text: string | undefined;
+  let taskFailed = false;
+  for (let depth = 0; depth < 5; depth += 1) {
+    taskFailed ||= envelope.type === VIDEO_FAILURE_EVENT;
+    const data = videoObject(envelope.data);
+    const message = errorText(envelope) ?? (data && errorText(data));
+    if (!message) {
+      if (taskFailed) text = undefined;
+      break;
+    }
+    text = message;
+    if (!text.startsWith("{")) break;
+    try {
+      const next = videoObject(JSON.parse(text));
+      if (!next) break;
+      envelope = next;
+    } catch { break; }
+  }
+  return { text, taskFailed };
+}
+
+function failureDetail(text: string | undefined, fallback: string) {
+  if (!text) return fallback;
+  if (/output video may be related to copyright restrictions/i.test(text)) {
+    const requestId = /\brequest id:\s*([a-z0-9_-]+)/i.exec(text)?.[1];
+    return `服务商拒绝生成，输出视频可能涉及版权限制。${requestId ? `\n请求 ID ${requestId.slice(0, 128)}` : ""}`;
+  }
+  return text.slice(0, 500);
 }
 
 /** Decode business errors even when the gateway sends HTTP 200. */
@@ -94,26 +140,29 @@ export function videoPayload(body: string, status = 200): Record<string, unknown
   let raw: unknown;
   try { raw = JSON.parse(body); }
   catch { throw new VideoApiError(`视频服务返回了非 JSON 响应（HTTP ${status}）`, status >= 400 && status < 500 && status !== 408, status === 404 || status === 405); }
-  const envelope = videoObject(raw);
-  const error = videoObject(envelope.error);
-  const message = [error.message, envelope.msg, envelope.message].find((v) => typeof v === "string" && v.trim()) as string | undefined;
+  const envelope = videoObject(raw) ?? {};
+  const data = videoObject(envelope.data) ?? (envelope.code !== undefined ? {} : envelope);
+  const error = envelope.error ?? data.error;
   const failed = envelope.code !== undefined && envelope.code !== null && String(envelope.code) !== "0";
-  if (status < 200 || status >= 300 || failed || (envelope.error && !envelope.status && !envelope.task_status)) {
-    const missing = status === 404 || status === 405 || /no static resource|request method ['"]?POST['"]? is not supported/i.test(message ?? "");
-    const detail = /providers not found/i.test(message ?? "")
-      ? `当前密钥分组没有所选模型的可用视频渠道，请在网关开通此模型或选择其他已开通的视频模型。\n${message}`
-      : message;
-    throw new VideoApiError(detail?.slice(0, 500) || `视频服务请求失败（HTTP ${status}）`, missing || failed || (status >= 400 && status < 500 && status !== 408), missing);
+  const envelopeError = data !== envelope && Boolean(envelope.error);
+  if (status < 200 || status >= 300 || failed || envelopeError || envelope.type === VIDEO_FAILURE_EVENT || (error && !firstText(data.status, data.task_status))) {
+    const { text, taskFailed } = unwrapVideoError(envelope);
+    const missing = !taskFailed && (status === 404 || status === 405 || /no static resource|request method ['"]?POST['"]? is not supported/i.test(text ?? ""));
+    const detail = /providers not found/i.test(text ?? "")
+      ? `当前密钥分组没有所选模型的可用视频渠道，请在网关开通此模型或选择其他已开通的视频模型。\n${text}`
+      : text;
+    const rejected = taskFailed || missing || failed || (status >= 400 && status < 500 && status !== 408);
+    throw new VideoApiError(failureDetail(detail, taskFailed ? "服务商生成失败。" : `视频服务请求失败（HTTP ${status}）`), rejected, missing, taskFailed);
   }
-  return envelope.code !== undefined ? videoObject(envelope.data) : envelope;
+  return data;
 }
 
 /** Resolve the documented task identifiers from either protocol, including wrapped responses. */
 export function videoTaskId(body: string, status = 200) {
   const data = videoPayload(body, status);
-  const id = [data.id, data.task_id, data.taskId].find((v) => typeof v === "string" && v.trim()) as string | undefined;
+  const id = firstText(data.id, data.task_id, data.taskId);
   if (!id) throw new VideoApiError(`响应缺少任务 ID（返回字段 ${Object.keys(data).join("、") || "空"}）`, false);
-  return id.trim();
+  return id;
 }
 
 /** Map the validated prompt and exact first frame to the gateway's unified video input. */
@@ -132,25 +181,35 @@ export function videoTasksUrl(baseUrl: string, api: VideoApi = "seedance") {
 
 /** Normalize native and unified task states. Signed result URLs live only in memory. */
 export function readVideoStatus(body: string, api: VideoApi = "seedance", status = 200): { phase: VideoPhase; detail: string; download?: string } {
-  const data = videoPayload(body, status);
-  const rawPhase = api === "predictions" ? data.task_status : data.status;
-  const phase = typeof rawPhase === "string" ? rawPhase.toLowerCase() : "";
+  let data: Record<string, unknown>;
+  try { data = videoPayload(body, status); }
+  catch (error) {
+    if (error instanceof VideoApiError && error.taskFailed) return { phase: "failed", detail: error.message };
+    throw error;
+  }
+  const rawPhase = api === "predictions" ? firstText(data.task_status, data.status) : firstText(data.status, data.task_status);
+  const phase = rawPhase?.toLowerCase();
   switch (phase) {
     case "queued": case "running": case "cancelled":
       return { phase, detail: "" };
     case "pending": case "starting": return { phase: "queued", detail: "" };
     case "processing": case "in_progress": return { phase: "running", detail: "" };
     case "canceled": return { phase: "cancelled", detail: "" };
-    case "error": case "failed": case "expired":
-      return { phase: "failed", detail: String(videoObject(data.error).message || data.error || (phase === "expired" ? "任务已过期" : "服务方生成失败")) };
+    case "error": case "failed": case "expired": {
+      const { text } = unwrapVideoError(data);
+      return { phase: "failed", detail: failureDetail(text, phase === "expired" ? "任务已过期" : "服务方生成失败") };
+    }
     case "success": case "succeeded": {
-      const output = Array.isArray(data.output) ? data.output.map(videoObject).find((item) => item.type === "video") : undefined;
-      const download = api === "predictions" ? output?.video || output?.image || output?.url : videoObject(data.content).video_url;
-      if (typeof download !== "string" || !/^https?:\/\//i.test(download)) {
+      const output = Array.isArray(data.output) ? data.output.map(videoObject).find((item) => item?.type === "video") : undefined;
+      const download = firstText(videoObject(data.content)?.video_url, data.video_url, output?.video, output?.image, output?.url);
+      if (!download || !/^https?:\/\//i.test(download)) {
         throw new Error("生成服务尚未提供有效的视频下载地址。");
       }
       return { phase: "downloading", detail: "", download };
     }
-    default: throw new Error("视频服务返回了无法识别的任务状态。");
+    default: {
+      const fields = Object.keys(data).slice(0, 8).join("、") || "空";
+      throw new Error(`视频服务返回了无法识别的任务状态（任务数据字段 ${fields}）。`);
+    }
   }
 }

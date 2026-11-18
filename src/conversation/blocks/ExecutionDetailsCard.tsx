@@ -1,5 +1,6 @@
 import { memo } from "react";
 import type { ExecutionDetails } from "../../app/types";
+import { VIDEO_TOOL_NAME } from "../../video/protocol";
 
 const statuses = { running: "执行中", success: "成功", error: "失败", skipped: "跳过", failed: "失败", aborted: "已中断" };
 const reasons: Record<string, string> = {
@@ -19,7 +20,7 @@ export const ExecutionDetailsCard = memo(function ExecutionDetailsCard({ details
         {details.fallbackReason ? <div>回退原因：{details.fallbackReason}</div> : null}
         {details.stopReason ? <div>结束原因：{reasonText(details.stopReason)}</div> : null}
         {details.tools.map((tool) => <div key={tool.callId}>
-          工具 {tool.name}：{statuses[tool.status]}{tool.reason ? ` · ${reasonText(tool.reason)}` : ""}
+          工具 {tool.name}：{tool.name === VIDEO_TOOL_NAME && tool.status === "success" ? "已提交" : statuses[tool.status]}{tool.reason ? ` · ${reasonText(tool.reason)}` : ""}
         </div>)}
       </div>
     </details>
