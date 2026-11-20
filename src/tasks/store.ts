@@ -35,13 +35,19 @@ export function setGoal(key: string, objective: string, maxIterations = 50): voi
 /** Require completed steps and verification evidence before goal completion. */
 export function changeGoal(key: string, status: TaskGoal["status"], evidence = ""): void {
   const s = taskState(key); if (!s.goal) throw new Error("当前没有目标");
+  if (status === "complete" && s.goal.status !== "active") throw new Error("仅可验收正在进行的持续目标");
   if (status === "complete" && (!evidence.trim() || s.plan.some((p) => p.status !== "completed"))) throw new Error("完成目标前须完成全部计划步骤并提供验证结果");
   useTaskStore.getState().patch(key, { goal: { ...s.goal, status, evidence } });
 }
 /** Describe the current mode, plan and active goal to the model. */
-export function taskInstruction(key: string): string {
+export function taskInstruction(key: string, canFinishGoal = true): string {
   const s = taskState(key);
+  const goal = s.goal;
+  const goalHint = !goal ? "当前是普通任务，完成计划并验证后直接回复结果即可。"
+    : goal.status === "complete" ? "持续目标已经验收完成；请按用户当前请求处理，完成本轮工作后直接汇报结果。"
+    : goal.status !== "active" ? "持续目标已暂停或等待处理，本轮不进行目标验收。"
+    : `持续目标：${goal.objective}。未满足验收条件时继续工作；${canFinishGoal && s.mode === "execute" ? "验证完成后调用 finish_goal 并提供证据。" : "完成工作后汇报验证结果。"}需要用户输入时清楚说明并停止。`;
   return [s.mode === "plan" ? "当前为计划模式。仅调查、澄清和调用 update_plan 建立计划，不修改文件、不执行有副作用的命令。" : "用 update_plan 跟踪复杂任务的步骤与验证进度。",
     s.plan.length ? `当前计划：${JSON.stringify(s.plan)}` : "",
-    s.goal?.status === "active" ? `持续目标：${s.goal.objective}。未满足验收条件时继续工作；验证完成后调用 finish_goal 并提供证据。需要用户输入时清楚说明并停止。` : ""].filter(Boolean).join("\n");
+    goalHint].filter(Boolean).join("\n");
 }

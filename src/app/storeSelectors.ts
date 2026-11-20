@@ -137,6 +137,11 @@ export function selectModelConnectionByCode(
   return model ? connectionFromModel(model, state.imageInputEnabled) : null;
 }
 
+/** 显式选择必须匹配当前授权列表；仅自动模式沿用本轮对话服务。 */
+export function selectImageModelConnection(state: AppStore, chatConnection: ModelConnection | null): ModelConnection | null {
+  return state.imageModelCode ? selectModelConnectionByCode(state, state.imageModelCode) : chatConnection;
+}
+
 /** 对话与 Agent 只接受可发起聊天请求的模型。 */
 export function selectChatModelConnectionByCode(state: AppStore, code: string): ModelConnection | null {
   const model = state.remoteModels.find((item) => item.code === code);

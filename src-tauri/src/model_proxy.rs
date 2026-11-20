@@ -265,7 +265,7 @@ pub struct ModelFetchResult {
 
 /// 经 Rust 侧发起一次**非流式**模型请求（模型列表探测、图像生成、旁路对话）。
 ///
-/// 只放行 `GET` / `POST`：调用处都是「取资源」或「提交 JSON」，放开任意方法并无用途，
+/// 只放行 `GET` / `POST` / `DELETE`：查询、提交与取消任务，放开任意方法并无用途，
 /// 收窄取值也避免把前端传错的方法原样打到上游。
 #[tauri::command]
 pub async fn model_fetch(
@@ -275,6 +275,7 @@ pub async fn model_fetch(
     url: String,
     key: String,
     body: Option<String>,
+    timeout_secs: Option<u64>,
 ) -> Result<ModelFetchResult, String> {
     let http_method = match method.as_str() {
         "GET" => reqwest::Method::GET,
@@ -284,7 +285,8 @@ pub async fn model_fetch(
     };
 
     let cancel = app.state::<ModelProxyState>().begin(&request_id);
-    let result = fetch_once(http_method, &url, &key, body, cancel).await;
+    let timeout = timeout_secs.map(|seconds| std::time::Duration::from_secs(seconds.clamp(1, 600)));
+    let result = fetch_once(http_method, &url, &key, body, timeout, cancel).await;
     app.state::<ModelProxyState>().finish(&request_id);
     result
 }
@@ -295,11 +297,15 @@ async fn fetch_once(
     url: &str,
     key: &str,
     body: Option<String>,
+    timeout: Option<std::time::Duration>,
     mut cancel: oneshot::Receiver<()>,
 ) -> Result<ModelFetchResult, String> {
     let mut builder = client_for(url)
         .request(method, url)
         .header(reqwest::header::ACCEPT, "*/*");
+    if let Some(timeout) = timeout {
+        builder = builder.timeout(timeout);
+    }
     if !key.is_empty() {
         builder = builder.bearer_auth(key);
     }
@@ -309,7 +315,24 @@ async fn fetch_once(
             .body(body);
     }
 
-    let sent = tokio::select! {
+    // A response may send headers and then stall; cancellation and timeout must cover its body too.
+    let fetch = async {
+        let response = builder
+            .send()
+            .await
+            .map_err(|error| fetch_error("请求", error))?;
+        let status = response.status().as_u16();
+        let body = response
+            .text()
+            .await
+            .map_err(|error| fetch_error("读取响应", error))?;
+        Ok(ModelFetchResult {
+            status,
+            body,
+            aborted: false,
+        })
+    };
+    tokio::select! {
         _ = &mut cancel => {
             return Ok(ModelFetchResult {
                 status: 0,
@@ -317,29 +340,124 @@ async fn fetch_once(
                 aborted: true,
             });
         }
-        result = builder.send() => result,
-    };
-    let response = sent.map_err(|error| format!("请求模型服务失败：{error}"))?;
-    let status = response.status().as_u16();
-    let body = response
-        .text()
-        .await
-        .map_err(|error| format!("读取模型服务响应失败：{error}"))?;
-    Ok(ModelFetchResult {
-        status,
-        body,
-        aborted: false,
-    })
+        result = fetch => result,
+    }
+}
+
+/// Preserve the cause of a failed connection instead of displaying only the request URL.
+fn fetch_error(stage: &str, error: reqwest::Error) -> String {
+    use std::error::Error;
+    if error.is_timeout() {
+        return format!("模型服务{stage}超时");
+    }
+    let mut detail = error.to_string();
+    let mut cause = error.source();
+    for _ in 0..4 {
+        let Some(source) = cause else { break };
+        let text = source.to_string();
+        if !detail.contains(&text) {
+            detail.push_str(&format!("：{text}"));
+        }
+        cause = source.source();
+    }
+    format!("模型服务{stage}失败：{detail}")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    /// Reproduce servers that send headers but leave the body pending indefinitely.
+    async fn stalled_body_server() -> (String, oneshot::Receiver<()>, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/status", listener.local_addr().unwrap());
+        let (sent, received) = oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 2048];
+            socket.read(&mut request).await.unwrap();
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\na")
+                .await
+                .unwrap();
+            let _ = sent.send(());
+            std::future::pending::<()>().await;
+        });
+        (url, received, server)
+    }
+
+    #[tokio::test]
+    async fn fetch_timeout_covers_a_stalled_response_body() {
+        let (url, _headers, server) = stalled_body_server().await;
+        let (_sender, cancel) = oneshot::channel();
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            fetch_once(
+                reqwest::Method::GET,
+                &url,
+                "",
+                None,
+                Some(std::time::Duration::from_millis(100)),
+                cancel,
+            ),
+        )
+        .await
+        .expect("read must have a deadline");
+        server.abort();
+        assert!(result.err().expect("must time out").contains("超时"));
+    }
+
+    #[tokio::test]
+    async fn fetch_cancel_interrupts_body_after_response_headers() {
+        let (url, headers, server) = stalled_body_server().await;
+        let (sender, cancel) = oneshot::channel();
+        let query = tokio::spawn(async move {
+            fetch_once(reqwest::Method::GET, &url, "", None, None, cancel).await
+        });
+        headers.await.unwrap();
+        sender.send(()).unwrap();
+        let response = tokio::time::timeout(std::time::Duration::from_secs(2), query)
+            .await
+            .expect("cancel must interrupt the body")
+            .unwrap()
+            .unwrap();
+        server.abort();
+        assert!(response.aborted);
+        assert_eq!(response.status, 0);
+    }
+
+    #[tokio::test]
+    async fn fetch_connection_error_keeps_the_underlying_cause() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/status", listener.local_addr().unwrap());
+        drop(listener);
+        let (_sender, cancel) = oneshot::channel();
+        let result = fetch_once(
+            reqwest::Method::GET,
+            &url,
+            "",
+            None,
+            Some(std::time::Duration::from_secs(2)),
+            cancel,
+        )
+        .await;
+        let error = result.err().expect("closed port must fail");
+        assert!(
+            error.contains("Connection refused")
+                || error.contains("os error")
+                || error.contains("tcp connect"),
+            "{error}"
+        );
+    }
 
     #[test]
     fn take_text_passes_through_complete_text() {
         let mut pending = b"data: {\"a\":1}\n\n".to_vec();
-        assert_eq!(take_text(&mut pending).as_deref(), Some("data: {\"a\":1}\n\n"));
+        assert_eq!(
+            take_text(&mut pending).as_deref(),
+            Some("data: {\"a\":1}\n\n")
+        );
         assert!(pending.is_empty());
     }
 

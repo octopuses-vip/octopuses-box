@@ -4,14 +4,16 @@ import { mockIPC, clearMocks } from "@tauri-apps/api/mocks";
 import { nativeAudioSource } from "../src/app/desktop/audioFiles";
 import { prepareAudio } from "../src/app/desktop/audioSegments";
 import { restoreFiles } from "../src/app/fileDrop";
-import { transcribeAudio } from "../src/audio/transcription";
+import { transcribeAudio, transcriptionConnection } from "../src/audio/transcription";
 import type { NativeAudioFile } from "../src/audio/files";
 
 const file: NativeAudioFile = { kind: "nativeAudio", name: "interview.mp4", path: "/source/interview.mp4", size: 5 * 1024 ** 3,
   type: "audio/mp4", fingerprint: "native-revision", contentKey: "native-revision" };
-const connection = { url: "https://audio.example/v1", key: "test-token", modelId: "asr", supportsImages: false, visionModelId: "" };
+const connection = transcriptionConnection([
+  { id: 1, code: "qwen3-asr", name: "Qwen3-ASR", provider: "qwen", baseUrl: "https://audio.example/v1", apiKey: "test-token", description: "" },
+], "");
 
-test("原生路径支持 GB 文件、失败续传、账号隔离、缓存恢复和取消", async () => {
+test("自动选择 Qwen3-ASR 的原生路径支持 GB 文件、失败续传、账号隔离、缓存恢复和取消", async () => {
   const previous = globalThis.window;
   globalThis.window = { crypto: globalThis.crypto } as Window & typeof globalThis;
   const stored = new Map<string, string>();
@@ -37,7 +39,7 @@ test("原生路径支持 GB 文件、失败续传、账号隔离、缓存恢复�
       }
       assert.equal(cmd, "audio_transcribe_segment");
       assert.equal(args.url, "https://audio.example/v1/audio/transcriptions");
-      assert.equal(args.model, "asr");
+      assert.equal(args.model, "qwen3-asr");
       assert.equal(args.key, "test-token");
       calls.push(args.index as number);
       if (stop) stop.abort();

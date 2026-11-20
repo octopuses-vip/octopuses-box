@@ -2,6 +2,7 @@ import type { RemoteModel } from "../app/types";
 import { transcriptionCapability } from "../audio/models";
 
 export interface SpecializedModelSelection {
+  imageModelCode: string;
   videoModelCode: string;
   audioModelCode: string;
 }
@@ -15,12 +16,13 @@ const dedicatedModelFamilies = [
 const dedicatedTaskInCode = /(?:^|[-_.:])(?:embeddings?|embed|rerank(?:er)?|moderation|transcrib(?:e|er)|asr|tts|speech-to-text|text-to-speech|text-to-video|image-to-video)(?:$|[-_.:])/i;
 
 /** Explicit chat capability takes precedence, including for models that also power a tool. */
-export function supportsChat(model: RemoteModel, { videoModelCode, audioModelCode }: SpecializedModelSelection): boolean {
+export function supportsChat(model: RemoteModel, { imageModelCode, videoModelCode, audioModelCode }: SpecializedModelSelection): boolean {
   if (typeof model.supportsChat === "boolean") return model.supportsChat;
 
   const code = model.code.trim().split("/").at(-1) ?? "";
   const transcription = transcriptionCapability(model);
   return model.code !== videoModelCode
+    && model.code !== imageModelCode
     && !(model.code === audioModelCode && transcription === "unverified")
     && transcription !== "supported"
     && !dedicatedModelFamilies.some((family) => family.test(code))

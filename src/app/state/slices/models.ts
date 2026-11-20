@@ -11,6 +11,8 @@ export const createModelsSlice: StoreSlice<
   | "modelOptions"
   | "remoteModels"
   | "modelConfig"
+  | "imageModelCode"
+  | "setImageModelCode"
   | "videoModelCode"
   | "setVideoModelCode"
   | "audioModelCode"
@@ -24,17 +26,24 @@ export const createModelsSlice: StoreSlice<
 > = (set, get) => ({
   model: "",
 
+  imageModelCode: "",
+  /** 专用出图模型沿用已授权连接，选择后同步更新可用的对话模型列表。 */
+  setImageModelCode: (imageModelCode) => set((state) => ({
+    imageModelCode,
+    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { ...state, imageModelCode }),
+  })),
+
   videoModelCode: "",
   setVideoModelCode: (videoModelCode) => set((state) => ({
     videoModelCode,
-    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { videoModelCode, audioModelCode: state.audioModelCode }),
+    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { ...state, videoModelCode }),
   })),
 
   audioModelCode: "",
   /** Retain an explicit choice without guessing capability from model names. */
   setAudioModelCode: (audioModelCode) => set((state) => ({
     audioModelCode,
-    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { videoModelCode: state.videoModelCode, audioModelCode }),
+    ...applyLoadedModels(state.remoteModels, state.model, state.imageInputEnabled, { ...state, audioModelCode }),
   })),
 
   modelOptions: [],

@@ -7,6 +7,7 @@ import { isDesktopRuntime } from "../app/desktop/runtime";
 import { inspectAudioFile } from "../app/desktop/audioFiles";
 import { pickFiles } from "../app/desktop/system";
 import { transcribeAudio, transcriptionConnection } from "./transcription";
+import { selectTranscriptionModel, transcriptionCapability } from "./models";
 import "./audio.css";
 
 /** A focused import-and-review flow keeps transcription independent of chat execution. */
@@ -23,7 +24,8 @@ export function AudioTranscriptionButton({ onInsert }: { onInsert: (text: string
   const models = useAppStore((s) => s.remoteModels);
   const code = useAppStore((s) => s.audioModelCode);
   const setCode = useAppStore((s) => s.setAudioModelCode);
-  const available = models.some((model) => model.code === code);
+  const selectedModel = selectTranscriptionModel(models, code);
+  const available = selectedModel !== null;
 
   useEffect(() => {
     if (open) dialog.current?.showModal();
@@ -76,9 +78,9 @@ export function AudioTranscriptionButton({ onInsert }: { onInsert: (text: string
       <label className="audio-dialog__field">
         <span className="form__label">语音识别模型</span>
         <select className="form__select" value={code} disabled={busy} onChange={(event) => setCode(event.target.value)}>
-          <option value="">请选择语音识别模型</option>
-          {code && !available ? <option value={code}>原模型已不可用，请重新选择</option> : null}
-          {models.map((model) => <option key={model.code} value={model.code}>{model.name || model.code}</option>)}
+          <option value="">{!code && selectedModel ? `自动（${selectedModel.name || selectedModel.code}）` : "自动（需有唯一的语音模型）"}</option>
+          {code && !available ? <option value={code} disabled>原模型已不可用，请重新选择</option> : null}
+          {models.filter((model) => transcriptionCapability(model) !== "unsupported").map((model) => <option key={model.code} value={model.code}>{model.name || model.code}</option>)}
         </select>
       </label>
       {!available ? <p className="form__hint">请添加或选择支持音频转写的模型。也可在「设置 → 模型与连接」中配置。</p> : null}

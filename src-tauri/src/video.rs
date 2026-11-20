@@ -1,4 +1,4 @@
-//! Stream a completed generation directly to a local MP4. The signed URL needs no gateway credential.
+//! Stream completed generations to local MP4 files, with authentication for OpenAI content endpoints.
 use crate::{cache::artifact_path, client_api::client_for};
 use futures::StreamExt;
 use std::{io::Read, path::Path, time::Duration};
@@ -11,7 +11,12 @@ fn is_mp4(header: &[u8]) -> bool {
 
 /// Download into an unlisted staging directory on the destination filesystem and publish atomically.
 #[tauri::command]
-pub async fn video_download(dir: String, name: String, url: String) -> Result<(), String> {
+pub async fn video_download(
+    dir: String,
+    name: String,
+    url: String,
+    key: Option<String>,
+) -> Result<(), String> {
     let root = Path::new(&dir);
     let target = artifact_path(root, &name)?;
     if !name.starts_with("video-") || !name.ends_with(".mp4") {
@@ -29,12 +34,13 @@ pub async fn video_download(dir: String, name: String, url: String) -> Result<()
     if !matches!(address.scheme(), "http" | "https") {
         return Err("视频地址需要 HTTP(S)".into());
     }
-    let response = client_for(&url)
+    let mut request = client_for(&url)
         .get(address)
-        .timeout(Duration::from_secs(600))
-        .send()
-        .await
-        .map_err(|_| "无法连接视频下载服务")?;
+        .timeout(Duration::from_secs(600));
+    if let Some(key) = key.filter(|value| !value.is_empty()) {
+        request = request.bearer_auth(key);
+    }
+    let response = request.send().await.map_err(|_| "无法连接视频下载服务")?;
     if !response.status().is_success() {
         return Err(format!("视频下载失败（HTTP {}）", response.status()));
     }
@@ -76,6 +82,95 @@ mod tests {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[tokio::test]
+    async fn openai_content_download_authenticates_api_without_forwarding_key_to_cdn() {
+        let root = tempfile::tempdir().unwrap();
+        let body = b"\0\0\0\x18ftypisom\0\0\0\0isommp42";
+        let api = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let cdn = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!(
+            "http://{}/v1/videos/video_mock/content",
+            api.local_addr().unwrap()
+        );
+        let location = format!(
+            "http://localhost:{}/clip.mp4",
+            cdn.local_addr().unwrap().port()
+        );
+        let origin = tokio::spawn(async move {
+            let (mut socket, _) = api.accept().await.unwrap();
+            let mut request = [0; 4096];
+            let count = socket.read(&mut request).await.unwrap();
+            let request = String::from_utf8_lossy(&request[..count]).to_lowercase();
+            assert!(request.starts_with("get /v1/videos/video_mock/content http/1.1"));
+            assert!(request.contains("\r\nauthorization: bearer test-video-key\r\n"));
+            socket.write_all(format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").as_bytes()).await.unwrap();
+        });
+        let download = tokio::spawn(async move {
+            let (mut socket, _) = cdn.accept().await.unwrap();
+            let mut request = [0; 4096];
+            let count = socket.read(&mut request).await.unwrap();
+            assert!(!String::from_utf8_lossy(&request[..count])
+                .to_lowercase()
+                .contains("authorization:"));
+            socket
+                .write_all(
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    )
+                    .as_bytes(),
+                )
+                .await
+                .unwrap();
+            socket.write_all(body).await.unwrap();
+        });
+        video_download(
+            root.path().to_string_lossy().into_owned(),
+            "video-auth.mp4".into(),
+            url,
+            Some("test-video-key".into()),
+        )
+        .await
+        .unwrap();
+        origin.await.unwrap();
+        download.await.unwrap();
+        assert_eq!(
+            std::fs::read(root.path().join("video-auth.mp4")).unwrap(),
+            body
+        );
+    }
+
+    #[tokio::test]
+    async fn rejected_content_download_keeps_the_output_directory_clean() {
+        let root = tempfile::tempdir().unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!(
+            "http://{}/v1/videos/video_mock/content",
+            listener.local_addr().unwrap()
+        );
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = [0; 4096];
+            socket.read(&mut request).await.unwrap();
+            socket
+                .write_all(
+                    b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+        });
+        let result = video_download(
+            root.path().to_string_lossy().into_owned(),
+            "video-denied.mp4".into(),
+            url,
+            Some("expired-key".into()),
+        )
+        .await;
+        assert!(result.unwrap_err().contains("401"));
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
     async fn native_download_rejects_partial_responses_and_reuses_published_file() {
         let root = tempfile::tempdir().unwrap();
         let body = b"\0\0\0\x18ftypisom\0\0\0\0isommp42";
@@ -95,7 +190,7 @@ mod tests {
         });
         let dir = root.path().to_str().unwrap().to_owned();
         let name = "video-test.mp4".to_owned();
-        assert!(video_download(dir.clone(), name.clone(), url.clone())
+        assert!(video_download(dir.clone(), name.clone(), url.clone(), None)
             .await
             .is_err());
         assert!(!root.path().join(&name).exists());
@@ -105,11 +200,11 @@ mod tests {
                 .count(),
             0
         );
-        video_download(dir.clone(), name.clone(), url.clone())
+        video_download(dir.clone(), name.clone(), url.clone(), None)
             .await
             .unwrap();
         assert_eq!(std::fs::read(root.path().join(&name)).unwrap(), body);
         server.await.unwrap();
-        video_download(dir, name, url).await.unwrap();
+        video_download(dir, name, url, None).await.unwrap();
     }
 }

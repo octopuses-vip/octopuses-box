@@ -15,6 +15,7 @@ import { selectActiveThread } from "../app/storeSelectors";
 import { SCHEME_OPTIONS, THEME_PRESETS } from "../app/theme";
 import type { SettingsCategory } from "../app/types";
 import { TranscriptionModelSetting } from "../audio/TranscriptionModelSetting";
+import { ImageGenerationModelSetting } from "../model/ImageGenerationModelSetting";
 import { DEFAULT_PERMISSION_MODE, permissionModeOption } from "../approval/permission";
 import { logCacheEvent } from "../cache/logger";
 import { useTheme } from "../hooks/useTheme";
@@ -572,6 +573,11 @@ export function SettingsPage() {
             {modelOptions.find((option) => option.id === model)?.description
               ?? (modelConfigStatus === "ready" ? "暂无可用对话模型。" : null)}
           </p>
+          <p className="page__desc" style={{ marginTop: 8 }}>
+            模型调用采用 OpenAI 标准接口（Chat Completions），请求路径为{" "}
+            <span className="mono">POST /chat/completions</span>。请使用兼容该接口的服务，
+            基础地址通常以 <span className="mono">/v1</span> 结尾。
+          </p>
           <div className="list-row">
             <span className="list-row__main">
               <span className="list-row__title">允许图片输入</span>
@@ -588,10 +594,11 @@ export function SettingsPage() {
               {supportsImages ? "已开启" : "已关闭"}
             </button>
           </div>
+          <ImageGenerationModelSetting />
           <label className="list-row">
             <span className="list-row__main">
               <span className="list-row__title">视频生成模型</span>
-              <span className="list-row__desc">选择已开通视频生成的模型或推理接入点。可在聊天中输入 /video 并附一张首帧图片。</span>
+              <span className="list-row__desc">选择支持 OpenAI Videos 接口的视频模型。可在聊天中输入 /video 并附一张首帧图片。</span>
             </span>
             <select aria-label="视频生成模型" value={videoModelCode} onChange={(event) => setVideoModelCode(event.target.value)}>
               <option value="">未配置</option>

@@ -38,17 +38,20 @@ test("对话列表过滤专用模型，保留工具连接与显式支持聊天�
     { code: "custom-tool", supportsChat: false },
     { code: "custom-audio", supportsAudioTranscription: true },
     { code: "old-video-endpoint" },
+    { code: "old-image-endpoint" },
     { code: "gemini-vision", supportsImages: true },
     { code: "multi-purpose", supportsChat: true, supportsAudioTranscription: true },
   ].map((entry) => ({ ...entry, baseUrl: "https://example.com/v1" }))));
   assert.deepEqual(errors, []);
   assert.deepEqual(parseLocalModels(serializeLocalModels(models)).models, models);
-  const selections = { videoModelCode: "old-video-endpoint", audioModelCode: "multi-purpose" };
+  const selections = { imageModelCode: "old-image-endpoint", videoModelCode: "old-video-endpoint", audioModelCode: "multi-purpose" };
   const loaded = applyLoadedModels(models, "doubao-seedance-2-5-260628", false, selections);
   assert.deepEqual(loaded.modelOptions.map(({ id }) => id), ["gemini-vision", "multi-purpose"]);
   assert.equal(loaded.modelConfig?.modelId, "gemini-vision");
   assert.equal(loaded.modelOptions[0].supportsImages, true);
   assert.equal(loaded.remoteModels, models);
+  const multiUse = applyLoadedModels(models, "multi-purpose", false, { ...selections, imageModelCode: "multi-purpose" });
+  assert.equal(multiUse.model, "multi-purpose");
   const toolsOnly = applyLoadedModels(models.slice(0, 8), "old-video-endpoint", false, selections);
   assert.equal(toolsOnly.model, "");
   assert.equal(toolsOnly.modelConfig, null);
@@ -59,14 +62,16 @@ test("调整专用模型配置更新对话选择，无法把专用模型切为�
   const before = useAppStore.getState();
   const video = "custom-endpoint";
   const audio = "custom-transcription";
+  const image = "custom-image-endpoint";
   const chat = "gpt-5.5";
-  const { models } = parseLocalModels(JSON.stringify([video, audio, chat].map((code) => ({ code, baseUrl: "https://example.com/v1" }))));
-  const selections = { videoModelCode: "", audioModelCode: "" };
+  const { models } = parseLocalModels(JSON.stringify([video, audio, image, chat].map((code) => ({ code, baseUrl: "https://example.com/v1" }))));
+  const selections = { imageModelCode: "", videoModelCode: "", audioModelCode: "" };
   try {
     useAppStore.setState({ ...selections, ...applyLoadedModels(models, video, false, selections) });
     useAppStore.getState().setVideoModelCode(video);
     assert.equal(useAppStore.getState().model, audio);
     useAppStore.getState().setAudioModelCode(audio);
+    useAppStore.getState().setImageModelCode(image);
     useAppStore.getState().setImageInputEnabled(true);
     assert.deepEqual(useAppStore.getState().modelOptions.map(({ id }) => id), [chat]);
     useAppStore.getState().setModel(video);
@@ -75,8 +80,12 @@ test("调整专用模型配置更新对话选择，无法把专用模型切为�
     assert.equal(state.modelConfig?.modelId, chat);
     assert.equal(selectChatModelConnectionByCode(state, video), null);
     assert.equal(selectModelConnectionByCode(state, video)?.modelId, video);
+    assert.equal(selectChatModelConnectionByCode(state, image), null);
+    assert.equal(selectModelConnectionByCode(state, image)?.modelId, image);
     state.setAudioModelCode(chat);
     assert.equal(useAppStore.getState().model, chat);
+    state.setVideoModelCode(video);
+    assert.deepEqual(useAppStore.getState().modelOptions.map(({ id }) => id), [audio, chat]);
   } finally {
     useAppStore.setState(before);
   }

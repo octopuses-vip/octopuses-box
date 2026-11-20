@@ -8,15 +8,17 @@ import { isNativeAudioFile, type AudioFile, type NativeAudioFile, validateAudio 
 import { isDesktopRuntime } from "../app/desktop/runtime";
 import { nativeAudioSource } from "../app/desktop/audioFiles";
 import { checkpointKey, readCheckpoint, saveCheckpoint, withCheckpointLock, type TranscriptionOptions } from "./checkpoints";
-import { transcriptionCapability } from "./models";
+import { selectTranscriptionModel, transcriptionCapability } from "./models";
 
 /** Allow an explicit capable model, or the only known speech model when auto is selected. */
 export function transcriptionConnection(models: RemoteModel[], code: string): ModelConnection {
-  const candidates = models.filter((model) => transcriptionCapability(model) === "supported");
-  const selected = code ? models.find((model) => model.code === code) : candidates.length === 1 ? candidates[0] : undefined;
-  if (!selected) throw new Error("请先在「设置 → 模型与连接 → 音频转文字模型」选择可用的语音识别模型。");
-  if (transcriptionCapability(selected) === "unsupported") {
-    throw new Error(`${selected.name || selected.code} 不支持文件转写，请在「设置 → 模型与连接」选择支持 /audio/transcriptions 的语音识别模型。`);
+  const selected = selectTranscriptionModel(models, code);
+  if (!selected) {
+    const configured = code ? models.find((model) => model.code === code) : undefined;
+    if (configured && transcriptionCapability(configured) === "unsupported") {
+      throw new Error(`${configured.name || configured.code} 不支持文件转写，请在「设置 → 模型与连接」选择支持 /audio/transcriptions 的语音识别模型。`);
+    }
+    throw new Error("请先在「设置 → 模型与连接 → 音频转文字模型」选择可用的语音识别模型。");
   }
   return connectionFromModel(selected, false);
 }

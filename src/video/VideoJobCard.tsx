@@ -36,6 +36,7 @@ export function VideoJobCard({ item }: { item: ToolItem }) {
       <span className="spacer" /><span role="status">{phaseLabel[job.phase]}</span>
     </div>
     {reference?.dataUrl && <img className="attach-chip__thumb" src={reference.dataUrl} alt={`首帧：${reference.name}`} />}
+    {job.phase === "done" && (job.seconds || job.size) && <div className="tool-card__output">实际规格 {[job.seconds ? `${job.seconds} 秒` : "", job.size].filter(Boolean).join(" · ")}</div>}
     {job.detail && <div className="tool-card__output">{job.detail}</div>}
     {job.phase === "done" && job.dir !== currentDir && <div className="tool-card__output">已保存到 {job.dir}/{job.file} <ExportButton name={job.file} source={{ kind: "artifact", dir: job.dir, name: job.file }} /></div>}
     {job.phase === "done" && job.dir === currentDir && <button type="button" className="btn btn--ghost btn--sm" onClick={async () => {
@@ -45,9 +46,9 @@ export function VideoJobCard({ item }: { item: ToolItem }) {
       await s.selectArtifact(job.file);
       if (useAppStore.getState().activeThreadId === job.threadId) s.setRightTab("media");
     }}>播放 {job.file}</button>}
-    {!modelAvailable && job.taskId && ["queued", "running", "paused", "downloading"].includes(job.phase) &&
+    {!modelAvailable && job.taskId && ["queued", "running", "retrying", "paused", "downloading"].includes(job.phase) &&
       <span className="muted">等待原视频模型连接恢复</span>}
-    {job.phase === "paused" && <button disabled={busy || !modelAvailable} className="btn btn--sm" onClick={() => void control("resume")}>继续原任务</button>}
-    {job.phase === "queued" && job.api !== "predictions" && <button disabled={busy || !modelAvailable} className="btn btn--ghost btn--sm" onClick={() => void control("cancel")}>取消排队</button>}
+    {["paused", "retrying"].includes(job.phase) && <button disabled={busy || !modelAvailable} className="btn btn--sm" onClick={() => void control("resume")}>{job.phase === "retrying" ? "立即重试" : "继续原任务"}</button>}
+    {job.phase === "queued" && (!job.api || job.api === "seedance") && <button disabled={busy || !modelAvailable} className="btn btn--ghost btn--sm" onClick={() => void control("cancel")}>取消排队</button>}
   </div>;
 }

@@ -2,7 +2,7 @@ import { LIVE_BROWSER_TOOL } from "../tools/liveBrowser";
 import { SELECT_WORKSPACE_TOOL } from "../tasks/workspaces";
 import { memoryContext } from "../memories/store";
 import { taskKey, taskState, taskInstruction } from "../tasks/store";
-import { TASK_TOOLS, PLAN_READ_TOOLS } from "../tasks/tools";
+import { TASK_TOOLS, PLAN_READ_TOOLS, filterTaskTools } from "../tasks/tools";
 
 import { prepareArtifactDir } from "../app/desktop/artifacts";
 import { isDesktopRuntime } from "../app/desktop/runtime";
@@ -112,6 +112,7 @@ import {
  */
 import { VIDEO_TOOL, VIDEO_TOOL_NAME } from "../video/protocol";
 import { TRANSCRIBE_AUDIO_TOOL } from "../audio/protocol";
+import { selectTranscriptionModel } from "../audio/models";
 import { generateVideo, videoHistoryResult, videoForTurn } from "../video/generate";
 import { runToolCall } from "./agentToolCall";
 import { AgentExecutionResult, AgentExecutor, buildHistory, describeStopReason, hasProducedArtifact, persistRunSnapshot, runSlot, waitForAutomationApproval, waitForCommandApproval, awaitWithAbort, pushItemInto, createApprovalMirror, subagentApprovalMirrors } from "./useAgentRunShared";
@@ -185,7 +186,7 @@ export function createAgentExecutor(
         WRITE_FILE_TOOL,
         IMAGE_GEN_TOOL,
         ...(isDesktopRuntime() && selectModelConnectionByCode(store, store.videoModelCode) ? [VIDEO_TOOL] : []),
-        ...(isDesktopRuntime() && selectModelConnectionByCode(store, store.audioModelCode) ? [TRANSCRIBE_AUDIO_TOOL] : []),
+        ...(isDesktopRuntime() && selectTranscriptionModel(store.remoteModels, store.audioModelCode) ? [TRANSCRIBE_AUDIO_TOOL] : []),
         WEB_SEARCH_TOOL,
         READ_URL_TOOL,
         ...controlToolsForPlatform(),
@@ -196,7 +197,7 @@ export function createAgentExecutor(
       // 本地 CV 与本机算力相关、与模型无关，因此恒定挂出：OCR 只回文本，检测的文本结果同样可用
       availableTools.push(...CV_TOOLS);
       if (workspacePath) availableTools.push(...WORKSPACE_TOOLS);
-      availableTools.push(...TASK_TOOLS);
+      availableTools.push(...filterTaskTools(taskKey(cachePath, threadId), TASK_TOOLS));
       if (isDesktopRuntime() && cachePath) availableTools.push(LIVE_BROWSER_TOOL);
       if (project && project.folders?.length) availableTools.push(SELECT_WORKSPACE_TOOL);
       // 本地知识库是只读能力：桌面运行且有缓存目录时挂载，工具内部再检查模型和索引状态。
@@ -236,6 +237,7 @@ export function createAgentExecutor(
       // 供技能正文的工具名校验区分「有这个工具但本轮调不动」与「压根没这个工具」
       const knownToolNames = new Set([
         ...CLIENT_TOOL_NAMES,
+        ...TASK_TOOLS.map((tool) => tool.function.name),
         ...availableTools.map((tool) => tool.function.name),
       ]);
       skillToolScope = { mounted: mountedNames, known: knownToolNames };
@@ -271,12 +273,12 @@ export function createAgentExecutor(
         toolHints.push(buildSkillInstruction(invocation.skill,
           buildSkillToolWarning(invocation.skill.body, skillToolScope), mountedNames.has(READ_SKILL_TOOL_NAME)));
       }
-      return toolHints.filter(Boolean).join("\n");
+      return [taskInstruction(taskKey(cachePath, threadId), mountedNames.has("finish_goal")), ...toolHints].filter(Boolean).join("\n");
       });
       // 网关只接受「单条 system 且位于最前」：两段以上 role: "system" 会直接 400
       // （System message must be at the beginning.）。因此这里先收集各段文本，
       // 用空行分隔后合并成唯一一条 system，而不是逐段 push 成多条。
-      const systemParts: string[] = [taskInstruction(taskKey(cachePath, threadId)), memoryContext(cachePath, threadId, project?.id ?? "")];
+      const systemParts: string[] = [memoryContext(cachePath, threadId, project?.id ?? "")];
       if (project?.folders?.length) systemParts.push(`项目授权目录：${JSON.stringify([project.path, ...project.folders])}。当前目录：${workspacePath}。用 select_workspace 切换后续文件操作的根目录，每个目录的规则和沙箱独立生效。`);
       // 项目规则（AGENTS.md）由客户端自动发现，放在最前面，作为本工作区的最高层约定
       const rulesMessage = await buildProjectRulesMessage(workspacePath);
@@ -428,19 +430,21 @@ export function createAgentExecutor(
         }
         const call: ToolCall = { id: nextId("video-call"), type: "function",
           function: { name: VIDEO_TOOL_NAME, arguments: JSON.stringify({ prompt: prompt.trim().slice(6).trim() }) } };
-        const submit = generateVideo(call, { threadId, messageId, attachments, artifactDir, cachePath, push, patch, nextId, controller });
         const trace = observeTrace(runTrace);
         const data = { toolCallId: call.id, toolName: VIDEO_TOOL_NAME };
         trace({ kind: "event", name: "tool_start", data });
         try {
-          const result = await awaitWithAbort(submit, controller.signal);
-          trace({ kind: "event", name: result.ok ? "tool_success" : "tool_error", data });
-          const reason = result.ok ? "completed" : "error";
+          const video = generateVideo(call, { threadId, messageId, attachments, artifactDir, cachePath, push, patch, nextId, controller, startedAt });
+          const result = await awaitWithAbort(video, controller.signal);
+          const reason = result.ok ? "completed" : result.timedOut ? "timeBudget" : "error";
+          trace({ kind: "event", name: result.ok ? "tool_success" : "tool_error",
+            data: { ...data, reason: result.ok ? "video_saved" : result.timedOut ? reason : undefined } });
+          if (result.timedOut) push({ id: nextId("item"), type: "notice", tone: "warn", text: result.output });
           finish(threadId, prompt, "done", reason);
           return { outcome: result.ok ? "success" : "failed", reason, message: result.output };
         } catch (error) {
           if (!controller.signal.aborted) throw error;
-          trace({ kind: "event", name: "tool_skipped", data: { ...data, reason: "停止等待提交" } });
+          trace({ kind: "event", name: "tool_skipped", data: { ...data, reason: "停止等待视频任务" } });
           finish(threadId, prompt, "aborted", "userInterrupted");
           return { outcome: "aborted", reason: "userInterrupted", message: "" };
         }
@@ -604,7 +608,7 @@ export function createAgentExecutor(
       const executeToolCall = async (call: ToolCall): Promise<ChatMessage> => {
         const state = { producedAny, askPending };
         const result = await runToolCall(call, {
-          controller, valid, push, state, canSpawnSubagent, threadId, threadProjectId, thread, execute,
+          controller, startedAt, valid, push, state, canSpawnSubagent, threadId, threadProjectId, thread, execute,
           messageId, attachments, patch, mcpBindings, cachePath, skillToolScope, artifactDir, config, store,
           approvalHost, workspacePath, renderedCheckpoints, sshHosts, pendingImages, runId, model,
           nextId,
@@ -649,7 +653,7 @@ export function createAgentExecutor(
           reasoningOpen = false;
           answerOpen = false;
           let roundText = "";
-          const roundTools = lastRound ? [] : round === 0 ? tools : followUpTools;
+          const roundTools = filterTaskTools(taskKey(cachePath, threadId), lastRound ? [] : round === 0 ? tools : followUpTools);
           conversation = prepareConversation(conversation, roundTools);
 
           // 上一轮若有截图，作为独立的用户侧消息带上：模型据此「看」到最新画面再决定下一步

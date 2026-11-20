@@ -118,7 +118,7 @@ export const BUILTIN_TOOL_GROUPS: BuiltinToolGroup[] = [
   },
   {
     title: "视频生成",
-    condition: "桌面客户端，在设置中选择已开通的视频模型后可用",
+    condition: "桌面客户端，在设置中选择支持 OpenAI Videos 接口的视频模型后可用",
     tools: [VIDEO_TOOL],
   },
   {

@@ -16,8 +16,8 @@ export function saveVideoJob(scope: string, job: VideoJob, create = false): Prom
 }
 
 /** Download via Rust without transferring video bytes through IPC. */
-export function downloadVideo(job: VideoJob, url: string): Promise<void> {
-  return invoke("video_download", { dir: job.dir, name: job.file, url });
+export function downloadVideo(job: VideoJob, url: string, key?: string): Promise<void> {
+  return invoke("video_download", { dir: job.dir, name: job.file, url, ...(key ? { key } : {}) });
 }
 
 /** Authorize an individual file and hand its native asset URL to the player. */

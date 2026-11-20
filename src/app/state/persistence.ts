@@ -13,8 +13,8 @@ import {
   normalizeModelRetryCount,
 } from "./preferences";
 
-/** 持久化结构版本号：4 补齐知识库单文件上传大小配置。 */
-export const STORE_PERSIST_VERSION = 4;
+/** 持久化结构版本号：5 补齐独立的图片生成模型配置。 */
+export const STORE_PERSIST_VERSION = 5;
 
 /**
  * 从完整 store 里挑出需要落盘的字段（开发者 Jan）。
@@ -52,6 +52,7 @@ export function selectPersistedState(state: AppStore) {
     knowledgeFileLimitMb: state.knowledgeFileLimitMb,
     // 图片输入手动开关跟着落盘：它是设备级偏好，重启后不应被重置
     imageInputEnabled: state.imageInputEnabled,
+    imageModelCode: state.imageModelCode,
     videoModelCode: state.videoModelCode,
     audioModelCode: state.audioModelCode,
     // 模型调用转储开关同样是设备级偏好：重启后保持用户的选择
@@ -73,6 +74,8 @@ export function selectPersistedState(state: AppStore) {
  */
 export function migratePersistedState(persisted: unknown): ReturnType<typeof selectPersistedState> {
   const next = { ...(persisted as Record<string, unknown>) };
+  // 未指定出图模型时保持旧版的自动模式，连接与密钥仍由当前授权列表派生。
+  next.imageModelCode = typeof next.imageModelCode === "string" ? next.imageModelCode.trim() : "";
   // 旧配置不再进入运行期，也不再随其他偏好重新写回磁盘。
   delete next.autoReviewEnabled;
   delete next.autoReviewModel;

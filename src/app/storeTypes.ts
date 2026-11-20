@@ -351,6 +351,9 @@ export interface AppStore {
   remoteModels: RemoteModel[];
   /** 当前选中模型派生出的连接信息，仅保存在内存，每次登录重新获取 */
   modelConfig: ModelConnection | null;
+  /** 独立的图片生成模型选择；空值沿用对话服务的自动探测。仅持久化模型 code。 */
+  imageModelCode: string;
+  setImageModelCode: (code: string) => void;
   videoModelCode: string;
   setVideoModelCode: (code: string) => void;
   /** Explicit transcription model selection; only its code is persisted. */

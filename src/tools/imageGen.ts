@@ -2,7 +2,7 @@
  * `generate_image` 工具：调用网关的 `/images/generations` 生成图片，落盘到当前会话的产物目录
  * （项目会话在项目根下的 `output/`，临时会话在缓存区的 `outputs/<日期>/`），右栏「媒体」tab 随即可以预览。
  *
- * 走「探测 + 降级」：先看 `/models` 有没有图像模型、再退回空体 POST 探一次路由，结果缓存 24h；
+ * 优先使用显式配置的图片生成模型；自动模式先看 `/models` 有没有图像模型、再探路由，结果缓存 24h；
  * 网关没有渠道时返回**可读的不可用提示**而不是静默失败，渠道开通后无需改代码即生效。
  *
  * 三个请求（两次探测 + 一次生成）在桌面端都经 Rust 侧代理发出，原因见 `app/desktop.ts`
@@ -95,6 +95,7 @@ export interface ImageGenResult {
 export function buildImageGenHint(): string {
   return [
     "需要图片素材（配图、插画、图标、海报）时可用 generate_image 生成并落盘；",
+    "用户可在设置中选择独立的图片生成模型。",
     "它返回文件名，可在右侧面板预览。若它回「不可用」，说明当前网关没有图像渠道，",
     "此时改用 write_artifact 写 SVG 或 HTML 图形，不要反复重试 generate_image。",
   ].join("");
@@ -220,12 +221,14 @@ function resolveImageName(raw: string): string {
  * 参数缺失、渠道不可用、接口报错都作为可读文本返回，让模型自行改道（写 SVG）或向用户说明。
  *
  * @param artifactDir 当前会话的产物目录（项目 `output/` 或缓存区 `outputs/<日期>/`），未确定时无法落盘
+ * @param selectedModel 显式选择的模型 code；有选择时直接请求，避免自动探测改用其他模型。
  */
 export async function runGenerateImageTool(
   artifactDir: string | null,
   connection: ModelConnection | null,
   argumentsJson: string,
   signal?: AbortSignal,
+  selectedModel?: string,
 ): Promise<ImageGenResult> {
   let prompt = "";
   let size = IMAGE_SIZES[0];
@@ -253,21 +256,27 @@ export async function runGenerateImageTool(
     return { ok: false, output: "缺少参数 prompt，请描述要生成的图片内容。", name: null };
   }
   if (!connection) {
-    return { ok: false, output: "尚未取到模型连接信息，无法调用图像接口。", name: null };
+    return { ok: false, output: selectedModel
+      ? "所选图片生成模型当前不可用，请在设置的「模型与连接 → 图片生成模型」中重新选择。"
+      : "尚未取到模型连接信息，无法调用图像接口。", name: null };
   }
 
-  const probe = await probeImageSupport(connection, signal);
-  if (!probe.available) {
-    return {
-      ok: false,
-      output: `${probe.reason}。可改用 write_artifact 产出 SVG 或 HTML 图形作为替代。`,
-      name: null,
-    };
+  let model = selectedModel;
+  if (!model) {
+    const probe = await probeImageSupport(connection, signal);
+    if (!probe.available) {
+      return {
+        ok: false,
+        output: `${probe.reason}。可在设置中选择图片生成模型，或改用 write_artifact 产出 SVG 或 HTML 图形作为替代。`,
+        name: null,
+      };
+    }
+    model = probe.model;
   }
 
   let generated: ImageGenerationResult;
   try {
-    generated = await generateImage(connection, probe.model, prompt, size, signal);
+    generated = await generateImage(connection, model, prompt, size, signal);
   } catch (error) {
     // 用户点了停止：原样抛出，由运行循环按中断处理
     if (error instanceof DOMException && error.name === "AbortError") throw error;

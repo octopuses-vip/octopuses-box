@@ -7,6 +7,7 @@ import { toUserContent } from "../src/model/attachments";
 import { AttachmentDraft } from "../src/model/attachmentDraft";
 import { selectPersistedState, migratePersistedState } from "../src/app/state/persistence";
 import { createModelsSlice } from "../src/app/state/slices/models";
+import { selectTranscriptionModel, transcriptionCapability } from "../src/audio/models";
 import type { AppStore } from "../src/app/storeTypes";
 import type { RemoteModel } from "../src/app/types";
 
@@ -44,6 +45,29 @@ test("拖入音频不会发给误选的聊天模型，唯一的授权语音模�
   assert.throws(() => transcriptionConnection([chat, speech, { ...speech, code: "whisper-1" }], ""), /选择/);
   const gateway = { ...chat, supportsAudioTranscription: true };
   assert.equal(transcriptionConnection([gateway], gateway.code).modelId, gateway.code);
+});
+
+test("Qwen3-ASR 别名、规格与完整仓库名可自动识别，显式能力声明优先", () => {
+  for (const code of ["qwen3-asr", "Qwen3-ASR-0.6B", "Qwen/Qwen3-ASR-1.7B", "qwen3_asr"]) {
+    const speech = { ...models[1], code };
+    assert.equal(transcriptionCapability(speech), "supported");
+    assert.equal(selectTranscriptionModel([models[0], speech], ""), speech);
+    assert.equal(transcriptionConnection([models[0], speech], "").modelId, code);
+    assert.equal(transcriptionCapability({ ...speech, supportsAudioTranscription: false }), "unsupported");
+  }
+  assert.equal(transcriptionCapability({ ...models[1], code: "Qwen3-ForcedAligner-0.6B" }), "unverified");
+  assert.equal(transcriptionCapability({ ...models[1], code: "qwen3-asrish" }), "unverified");
+});
+
+test("自动与显式语音模型选择共用可用性判断，缺失或被禁用时不回退", () => {
+  const speech = { ...models[1], code: "qwen3-asr" };
+  const list = [models[0], speech];
+  assert.equal(selectTranscriptionModel(list, ""), speech);
+  assert.equal(selectTranscriptionModel(list, speech.code), speech);
+  assert.equal(selectTranscriptionModel(list, "removed"), null);
+  assert.equal(selectTranscriptionModel([{ ...speech, supportsAudioTranscription: false }], speech.code), null);
+  assert.equal(selectTranscriptionModel([speech, { ...speech, code: "Qwen/Qwen3-ASR-1.7B" }], ""), null);
+  assert.equal(selectTranscriptionModel([], ""), null);
 });
 
 test("转写响应拒绝无效结果，并给出授权、路由和额度的操作提示", () => {

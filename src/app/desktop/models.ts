@@ -98,6 +98,8 @@ export async function fetchModelResource(request: {
   key: string;
   /** POST 的 JSON 请求体原文；GET 不传 */
   body?: string;
+  /** 仅为短轮询设置上限，不改变生成等长请求的默认行为。 */
+  timeoutSecs?: number;
   signal?: AbortSignal;
 }): Promise<ModelFetchResult> {
   if (!isDesktopRuntime()) throw new Error("模型请求代理仅在桌面端可用。");
@@ -119,6 +121,7 @@ export async function fetchModelResource(request: {
       url: request.url,
       key: request.key,
       body: request.body ?? null,
+      timeoutSecs: request.timeoutSecs ?? null,
     });
   } finally {
     request.signal?.removeEventListener("abort", forwardAbort);
@@ -138,7 +141,7 @@ export interface ImageGenerationResult {
 /**
  * 调用 OpenAI 兼容的 `/images/generations` 生成一张图片。
  *
- * `model` 由 `probeImageSupport()` 探测得到（网关当前没有图像渠道时根本不会走到这里）。
+ * `model` 来自用户的独立出图配置，或自动模式下的 `probeImageSupport()`。
  * 结果只回 base64，落盘交给 `writeArtifactBytes`，让「探测」与「生成」共用同一条请求路径。
  * 桌面端经 Rust 侧代理发出，原因见「模型请求代理」一节。
  */

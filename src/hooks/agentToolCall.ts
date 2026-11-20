@@ -4,7 +4,7 @@ import { SELECT_WORKSPACE_TOOL } from "../tasks/workspaces";
 import { effectiveWorkspacePath } from "../app/state/workspace";
 import { buildProjectRulesMessage } from "../context/rules";
 import { taskKey, taskState } from "../tasks/store";
-import { TASK_TOOLS, PLAN_READ_TOOLS, runTaskTool } from "../tasks/tools";
+import { TASK_TOOLS, PLAN_READ_TOOLS, runTaskTool, taskToolUnavailableReason } from "../tasks/tools";
 
 import { callMcpTool } from "../app/desktop/mcp";
 import { classifyWorkspaceCommand } from "../app/desktop/workspace";
@@ -15,6 +15,7 @@ import {
   type ApprovalHost,
 } from "../approval/gate";
 import { useAppStore } from "../app/state";
+import { selectImageModelConnection } from "../app/storeSelectors";
 import type {
   StreamItem,
   ToolKind,
@@ -114,6 +115,7 @@ import type { MessageAttachment, SshHost, Thread } from "../app/types";
 /** 工具调用执行器的共享上下文；把模型循环与具体工具解耦（开发者 Jan）。 */
 export interface ToolCallExecutionContext {
   controller: AbortController;
+  startedAt: number;
   valid: () => boolean;
   push: (item: StreamItem) => void;
   state: { producedAny: boolean; askPending: boolean };
@@ -164,6 +166,8 @@ export async function runToolCall(call: ToolCall, context: ToolCallExecutionCont
         }
 
         if (TASK_TOOLS.some((t) => t.function.name === tool)) {
+          const unavailable = taskToolUnavailableReason(taskKey(cachePath, threadId), tool);
+          if (unavailable) return { role: "tool", tool_call_id: call.id, content: unavailable };
           if (!skillToolScope.mounted.has(tool)) return { role: "tool", tool_call_id: call.id, content: "当前未启用此任务工具" };
           const output = runTaskTool(taskKey(cachePath, threadId), tool, call.function.arguments);
           push({ id: nextId("item"), type: "tool_call", kind: "plan", title: tool === "update_plan" ? "更新计划" : "目标验收", command: null, status: output.startsWith("任务状态更新失败") ? "error" : "success", output, durationMs: 0, callId: call.id, name: tool, arguments: call.function.arguments, result: output, plan: tool === "update_plan" && !output.startsWith("任务状态更新失败") ? taskState(taskKey(cachePath, threadId)).plan.map((s) => ({ ...s })) : undefined });
@@ -532,11 +536,13 @@ export async function runToolCall(call: ToolCall, context: ToolCallExecutionCont
             }
           }
         } else if (isImageGen) {
+          const current = useAppStore.getState();
           const generated = await runGenerateImageTool(
             artifactDir,
-            config,
+            selectImageModelConnection(current, config),
             call.function.arguments,
             controller.signal,
+            current.imageModelCode,
           );
           result = generated;
           if (generated.ok && generated.name) {

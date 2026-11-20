@@ -5,7 +5,7 @@ import type { MessageAttachment, StreamItem } from "../app/types";
 import { isDesktopRuntime } from "../app/desktop/runtime";
 import { sessionWrites } from "../cache/sessionPersistence";
 import type { ToolCall } from "../model/client";
-import { submitVideoJob, useVideoJobs, videoJobAt } from "./jobs";
+import { submitVideoJob, useVideoJobs, videoJobAt, waitForVideoJob } from "./jobs";
 import { phaseLabel, videoRequest, type VideoJob } from "./protocol";
 
 /** Separate local and managed accounts even when both use the same model ID and cache. */
@@ -23,6 +23,7 @@ interface SubmissionContext {
   patch: (id: string, fn: (item: StreamItem) => StreamItem) => void;
   nextId: (prefix: string) => string;
   controller: AbortController;
+  startedAt: number;
 }
 
 /** Find the original video task in the currently signed-in account and cache. */
@@ -34,8 +35,14 @@ export function videoForTurn(state: AppStore, id: string) {
 /** Make the latest provider state visible on follow-up turns, including after a restart. */
 export function videoHistoryResult(state: AppStore, id: string) {
   const job = videoForTurn(state, id);
-  if (!job) return undefined;
-  if (job.phase === "done") return `已生成 ${job.file}，可在右栏媒体中播放。`;
+  return job && videoResult(job);
+}
+
+function videoResult(job: VideoJob) {
+  if (job.phase === "done") {
+    const specs = [job.seconds ? `${job.seconds} 秒` : "", job.size].filter(Boolean).join(" · ");
+    return `已生成 ${job.file}${specs ? `（实际规格 ${specs}）` : ""}，可在右栏媒体中播放。`;
+  }
   return [phaseLabel[job.phase], job.detail, job.taskId].filter(Boolean).join(" · ");
 }
 
@@ -45,10 +52,12 @@ export async function generateVideo(call: ToolCall, context: SubmissionContext) 
   const s = useAppStore.getState();
   const connection = selectModelConnectionByCode(s, s.videoModelCode);
   const id = context.nextId("item");
+  const signal = context.controller.signal;
   push({ id, type: "tool_call", kind: "video_gen", name: call.function.name, callId: call.id,
     title: "生成视频", command: null, status: "running", output: "", durationMs: null, arguments: call.function.arguments,
     videoJobId: messageId });
   let ok = false;
+  let timedOut = false;
   let output: string;
   try {
     if (!isDesktopRuntime()) throw new Error("请使用桌面客户端生成视频。");
@@ -63,14 +72,17 @@ export async function generateVideo(call: ToolCall, context: SubmissionContext) 
       referenceId, dir: artifactDir, file: `video-${messageId}.mp4`, phase: "submitting", detail: "" };
     // Save the card (and its original image) before starting a billable operation.
     await sessionWrites(cachePath).flush();
-    context.controller.signal.throwIfAborted();
-    await submitVideoJob(cachePath, job, connection, body, context.controller.signal);
-    const current = videoJobAt(useVideoJobs.getState().jobs, cachePath, messageId)!;
-    ok = Boolean(current.taskId);
-    output = ok ? `视频任务已受理（${current.taskId}），请在任务卡查看进度。请勿重复提交。` : `${phaseLabel[current.phase]}：${current.detail}`;
+    signal.throwIfAborted();
+    await submitVideoJob(cachePath, job, connection, body, signal);
+    const deadline = s.maxRunDurationSecs > 0 ? context.startedAt + s.maxRunDurationSecs * 1000 : undefined;
+    const current = await waitForVideoJob(cachePath, messageId, signal, deadline);
+    timedOut = current === null;
+    ok = current?.phase === "done";
+    output = current ? videoResult(current) : "已达到本轮运行时长上限。原视频任务仍可在任务卡查看或继续。";
   } catch (e) {
+    signal.throwIfAborted();
     output = e instanceof Error ? e.message : String(e);
   }
   patch(id, (item) => item.type === "tool_call" ? { ...item, status: ok ? "success" : "error", output, result: output } : item);
-  return { ok, output };
+  return { ok, timedOut, output };
 }
