@@ -216,7 +216,7 @@ export interface UsageSummary extends TokenUsage {
   lastAt: number | null;
 }
 
-/** 用户消息携带的附件：粘贴或拖拽进入，图片走多模态入参，文本文件内联为文本 */
+/** 用户消息携带的附件：图片走多模态、文本内联，音视频保留本地原文件引用。 */
 export interface MessageAttachment {
   id: string;
   /** 文件名，剪贴板图片会给一个默认名 */
@@ -225,7 +225,9 @@ export interface MessageAttachment {
   mime: string;
   /** 字节数 */
   size: number;
-  kind: "image" | "file";
+  kind: "image" | "file" | "audio";
+  /** 音视频原文件的持久副本；仅供本地工具使用，不发送给聊天模型。 */
+  audioPath?: string;
   /** 图片的 data URL，非图片为 null */
   dataUrl: string | null;
   /** 文本文件的内容，图片与二进制文件为 null */

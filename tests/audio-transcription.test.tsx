@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mockIPC, clearMocks } from "@tauri-apps/api/mocks";
 import { AUDIO_MIME, MAX_AUDIO_BYTES, audioMime, isAudioFile, validateAudio, validateAudioUpload } from "../src/audio/files";
-import { parseTranscription, transcribeAudio, transcriptAttachment, transcriptionConnection } from "../src/audio/transcription";
-import { toUserContent } from "../src/model/attachments";
-import { AttachmentDraft } from "../src/model/attachmentDraft";
+import { parseTranscription, transcribeAudio, transcriptionConnection } from "../src/audio/transcription";
 import { selectPersistedState, migratePersistedState } from "../src/app/state/persistence";
 import { createModelsSlice } from "../src/app/state/slices/models";
 import { selectTranscriptionModel, transcriptionCapability } from "../src/audio/models";
@@ -37,7 +35,7 @@ test("音频校验区分 原文件大小和 25 MB 上传上限，转写不会回
   assert.equal(connection.key, models[1].apiKey);
 });
 
-test("拖入音频不会发给误选的聊天模型，唯一的授权语音模型可自动选择", () => {
+test("语音转写不会发给误选的聊天模型，唯一的授权语音模型可自动选择", () => {
   const chat = { ...models[0], code: "gpt-6.1-sol" };
   const speech = { ...models[1], code: "gpt-transcribe" };
   assert.throws(() => transcriptionConnection([chat, speech], chat.code), /不支持文件转写/);
@@ -117,29 +115,6 @@ test("上传真实音频字节和选定模型，失败不重试，取消不产�
     running.abort();
     await assert.rejects(result, { name: "AbortError" });
   } finally { globalThis.fetch = originalFetch; }
-});
-
-test("转写作为普通文字附件完整进入对话，等待完成后才能发送，原始录音不进入历史", async () => {
-  const draft = new AttachmentDraft();
-  let finish!: (text: string) => void;
-  const pending = new Promise<string>((resolve) => { finish = resolve; });
-  draft.add(Promise.resolve({ files: [new File(["data"], "meeting.mp3")], failed: [] }), async (file) => ({
-    ok: true, attachment: transcriptAttachment(file.name, await pending),
-  }));
-  assert.equal(draft.getSnapshot().pending, 1);
-  let ready = false;
-  const sending = draft.ready().then(() => { ready = true; });
-  await Promise.resolve();
-  assert(!ready);
-  finish("你好\n会议结论");
-  await sending;
-  const [attachment] = draft.getSnapshot().attachments;
-  assert.equal(attachment.name, "meeting.mp3.transcript.txt");
-  assert.equal(attachment.dataUrl, null);
-  assert.equal(attachment.size, new TextEncoder().encode("你好\n会议结论").length);
-  assert.match(String(toUserContent("总结会议", [attachment], false)), /你好\n会议结论/);
-  draft.sent([attachment]);
-  assert.equal(draft.getSnapshot().attachments.length, 0);
 });
 
 test("音频模型仅持久化选择，旧设置升级默认不配置音频服务", () => {

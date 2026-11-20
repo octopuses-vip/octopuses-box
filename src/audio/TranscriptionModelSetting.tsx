@@ -13,7 +13,7 @@ export function TranscriptionModelSetting() {
       <span className="list-row__main">
         <span className="list-row__title">音频转文字模型</span>
         <span className="list-row__desc">
-          拖入 MP3 等文件时自动转写。需要已授权且支持 /audio/transcriptions 的模型。
+          用于主动转写音视频。拖入 MP3 等文件会保留原文件，要求转写时才调用此模型。
           {known.length === 0 && "当前列表没有可自动识别的语音模型。"}
         </span>
       </span>

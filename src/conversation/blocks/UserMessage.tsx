@@ -39,7 +39,7 @@ export function UserMessage({ text, attachments, actions, messageId }: UserMessa
                 />
               ) : (
                 <span className="bubble__file" key={item.id} title={item.name}>
-                  <Icon name="file" size={12} />
+                  <Icon name={item.kind === "audio" ? "audio" : "file"} size={12} />
                   <span className="bubble__file-name">{item.name}</span>
                   <span className="muted">{formatBytes(item.size)}</span>
                 </span>

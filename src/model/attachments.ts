@@ -6,6 +6,7 @@
 import { nextId } from "../app/ids";
 import type { MessageAttachment } from "../app/types";
 import type { ChatContentPart } from "./client";
+import { isAudioFile, isNativeAudioFile, type AudioFile } from "../audio/files";
 
 /** 单张图片的大小上限 */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -155,10 +156,15 @@ function fallbackName(file: File): string {
 }
 
 /**
- * 读取一个文件为附件。图片存 data URL，文本文件与 PDF 存可读文字；
+ * 读取一个文件为附件。音视频保留原文件，图片存 data URL，文本与 PDF 存可读文字；
  * 不支持的二进制文件明确拒绝，避免发出只有文件名却没有可读内容的附件。
  */
-export async function createAttachment(file: File): Promise<AttachmentResult> {
+export async function createAttachment(file: AudioFile, cachePath?: string | null): Promise<AttachmentResult> {
+  if (isAudioFile(file)) {
+    const { createAudioAttachment } = await import("../audio/attachments");
+    return { ok: true, attachment: await createAudioAttachment(file, cachePath) };
+  }
+  if (isNativeAudioFile(file)) return { ok: false, reason: "此本地文件不是支持的音视频格式" };
   const name = fallbackName(file);
   const mime = attachmentMime(file);
 
@@ -214,7 +220,7 @@ export async function createAttachment(file: File): Promise<AttachmentResult> {
     };
   }
 
-  return { ok: false, reason: `${name}（${mime || "未知类型"}）暂不支持，仅支持图片、PDF 与文本文件` };
+  return { ok: false, reason: `${name}（${mime || "未知类型"}）暂不支持，仅支持图片、PDF、音视频与文本文件` };
 }
 
 /**
@@ -227,7 +233,7 @@ export function bytesToDataUrl(mime: string, base64: string): string {
   return `data:${mime};base64,${base64}`;
 }
 
-/** 把正文与附件拼成接口入参：文本文件内联为 `<file>` 块，图片追加为 image_url 片段 */
+/** 文本内联、图片走多模态，音视频仅提供附件标识，避免导入时隐式转写或上传原文件。 */
 export function toUserContent(
   text: string,
   attachments: MessageAttachment[],
@@ -241,6 +247,9 @@ export function toUserContent(
   let body = text;
   for (const file of files) {
     body += `${body.trim().length > 0 ? "\n\n" : ""}<file name="${file.name}">\n${file.text ?? ""}\n</file>`;
+  }
+  for (const audio of attachments.filter((item) => item.kind === "audio")) {
+    body += `${body.trim().length > 0 ? "\n\n" : ""}[音视频原文件附件，尚未转写：${JSON.stringify({ attachmentId: audio.id, name: audio.name, mime: audio.mime, size: audio.size })}。需要识别内容时使用 transcribe_audio；仅附加文件不代表要求转写。]`;
   }
 
   if (!includeImages) return [body, ...images.map((image) => `[图片附件：${image.name}；ID ${image.id}]`)].filter(Boolean).join("\n");

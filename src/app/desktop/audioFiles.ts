@@ -13,6 +13,17 @@ export interface NativeAudioSource {
   release: () => Promise<void>;
 }
 
+/** Keep an unchanged local copy with the conversation, without decoding or contacting a model. */
+export async function saveAudioAttachment(file: AudioFile, cachePath?: string | null): Promise<NativeAudioFile> {
+  if (!isDesktopRuntime()) throw new Error("附加音视频原文件请使用桌面客户端。");
+  if (!cachePath) throw new Error("请先配置缓存目录以保存音视频附件。");
+  const source = await nativeAudioSource(file);
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<NativeAudioFile>("audio_attachment_import", { cachePath, source: source.file });
+  } finally { await source.release(); }
+}
+
 /** Clipboard/browser Blobs are staged one MiB at a time; file-path sources require no copy. */
 export async function nativeAudioSource(file: AudioFile, signal?: AbortSignal): Promise<NativeAudioSource> {
   validateAudio(file);

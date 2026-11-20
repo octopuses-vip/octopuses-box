@@ -1,9 +1,8 @@
 import type { ModelConnection } from "../app/desktop/connectionTypes";
 import { fetchAudioTranscription } from "../app/desktop/audio";
 import { prepareAudio, fetchAudioSegment, releaseAudio } from "../app/desktop/audioSegments";
-import type { RemoteModel, MessageAttachment } from "../app/types";
+import type { RemoteModel } from "../app/types";
 import { connectionFromModel } from "../app/storeSelectors";
-import { nextId } from "../app/ids";
 import { isNativeAudioFile, type AudioFile, type NativeAudioFile, validateAudio } from "./files";
 import { isDesktopRuntime } from "../app/desktop/runtime";
 import { nativeAudioSource } from "../app/desktop/audioFiles";
@@ -110,12 +109,4 @@ function completedText(texts: string[]): string {
   const text = texts.filter((part) => part.trim()).join("\n\n");
   if (!text) throw new Error("未识别到文字，请检查录音是否包含清晰的人声。");
   return text;
-}
-
-/** Store only readable text as a regular attachment; audio bytes stay out of chat persistence. */
-export function transcriptAttachment(name: string, text: string): MessageAttachment {
-  return {
-    id: nextId("att"), name: `${name}.transcript.txt`, mime: "text/plain",
-    size: new TextEncoder().encode(text).length, kind: "file", dataUrl: null, text,
-  };
 }

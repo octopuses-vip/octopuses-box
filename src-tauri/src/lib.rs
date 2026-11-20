@@ -166,6 +166,7 @@ pub fn run() {
             audio_segments::audio_transcribe_segment,
             audio_segments::audio_release,
             audio_source::audio_inspect,
+            audio_source::audio_attachment_import,
             audio_source::audio_stage_create,
             audio_source::audio_stage_append,
             audio_source::audio_stage_finish,

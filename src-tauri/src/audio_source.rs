@@ -110,6 +110,48 @@ pub fn audio_inspect(path: String, base: Option<String>) -> Result<NativeAudioFi
     describe(path, name, &file)
 }
 
+/// Persist only a user-selected source in the session cache; never decode, transcribe or upload it.
+#[tauri::command]
+pub async fn audio_attachment_import(
+    cache_path: String,
+    source: NativeAudioFile,
+) -> Result<NativeAudioFile, String> {
+    tauri::async_runtime::spawn_blocking(move || import_attachment(Path::new(&cache_path), &source))
+        .await
+        .map_err(|_| "保存音视频附件失败".to_string())?
+}
+
+/// A private directory prevents collisions; failed copies are removed before a reference is published.
+fn import_attachment(root: &Path, source: &NativeAudioFile) -> Result<NativeAudioFile, String> {
+    if !root.is_absolute() {
+        return Err("缓存目录必须是绝对路径".into());
+    }
+    let name = &source.name;
+    if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." {
+        return Err("音视频文件名无效".into());
+    }
+    let mut input = open_source(source)?;
+    let parent = root.join("sessions/attachments/audio");
+    std::fs::create_dir_all(&parent).map_err(|_| "无法创建音视频附件目录")?;
+    let directory = tempfile::Builder::new()
+        .prefix("audio-")
+        .tempdir_in(parent)
+        .map_err(|_| "无法创建音视频附件目录")?;
+    let path = directory.path().join(name);
+    let mut output = File::create_new(&path).map_err(|_| "无法保存音视频附件")?;
+    let copied = std::io::copy(&mut input, &mut output)
+        .map_err(|_| "音视频附件保存失败，请检查磁盘空间")?;
+    open_source(source)?;
+    if copied != source.size {
+        return Err("音视频文件已改变，请重新添加".into());
+    }
+    output.sync_all().map_err(|_| "音视频附件写入失败")?;
+    let saved = describe(&path, name, &output)?;
+    drop(output);
+    let _ = directory.keep();
+    Ok(saved)
+}
+
 /// Browser clipboard Blobs have no path: create a private staged source for bounded chunk transfer.
 #[tauri::command]
 pub fn audio_stage_create(
@@ -234,6 +276,47 @@ pub fn audio_checkpoint_save(
 mod tests {
     use super::*;
     use crate::cache::base64_encode;
+
+    #[test]
+    fn attachment_keeps_original_bytes_name_and_survives_source_deletion() {
+        let originals = tempfile::tempdir().unwrap();
+        let cache = tempfile::tempdir().unwrap();
+        let path = originals.path().join("采访.MP3");
+        let bytes = [b'I', b'D', b'3', 0, 255, 128, 65];
+        std::fs::write(&path, bytes).unwrap();
+        let source = audio_inspect(path.to_string_lossy().into_owned(), None).unwrap();
+        let first = import_attachment(cache.path(), &source).unwrap();
+        let second = import_attachment(cache.path(), &source).unwrap();
+        assert_ne!(first.path, source.path);
+        assert_ne!(first.path, second.path);
+        assert_eq!(first.name, "采访.MP3");
+        assert_eq!(first.mime, "audio/mpeg");
+        assert_eq!(first.size, bytes.len() as u64);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        std::fs::remove_file(path).unwrap();
+        for saved in [first, second] {
+            let persisted: NativeAudioFile =
+                serde_json::from_str(&serde_json::to_string(&saved).unwrap()).unwrap();
+            assert!(open_source(&persisted).is_ok());
+            assert_eq!(std::fs::read(persisted.path).unwrap(), bytes);
+        }
+    }
+
+    #[test]
+    fn attachment_rejects_changed_sources_and_invalid_names_before_creating_files() {
+        let originals = tempfile::tempdir().unwrap();
+        let cache = tempfile::tempdir().unwrap();
+        let path = originals.path().join("recording.mp3");
+        std::fs::write(&path, [0, 255]).unwrap();
+        let mut source = audio_inspect(path.to_string_lossy().into_owned(), None).unwrap();
+        assert!(import_attachment(Path::new("relative-cache"), &source).is_err());
+        source.name = "../escape.mp3".into();
+        assert!(import_attachment(cache.path(), &source).is_err());
+        source.name = "recording.mp3".into();
+        std::fs::write(path, [0, 255, 65]).unwrap();
+        assert!(import_attachment(cache.path(), &source).is_err());
+        assert_eq!(std::fs::read_dir(cache.path()).unwrap().count(), 0);
+    }
 
     #[test]
     fn checkpoints_replace_previous_progress_and_reject_path_traversal() {

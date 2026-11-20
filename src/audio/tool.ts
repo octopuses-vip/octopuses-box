@@ -16,19 +16,33 @@ export async function runAudioTool(call: ToolCall, context: ToolCallExecutionCon
   const started = Date.now();
   let ok = false, output: string;
   try {
-    const args = JSON.parse(call.function.arguments) as { path?: unknown; offset?: unknown };
-    if (typeof args.path !== "string" || !args.path.trim()) throw new Error("请提供音视频文件路径。");
+    const args = JSON.parse(call.function.arguments) as { path?: unknown; attachmentId?: unknown; offset?: unknown };
+    if ((args.path === undefined) === (args.attachmentId === undefined)) throw new Error("请提供 path 或 attachmentId，二者选一。");
+    let path: string, label: string;
+    if (args.attachmentId !== undefined) {
+      if (typeof args.attachmentId !== "string" || !args.attachmentId.trim()) throw new Error("请提供有效的音视频附件 ID。");
+      const attachments = [...context.attachments, ...(context.store.messages?.[context.threadId] ?? [])
+        .filter((message) => message.role === "user").flatMap((message) => message.attachments ?? [])];
+      const attachment = attachments.find((item) => item.id === args.attachmentId && item.kind === "audio");
+      if (!attachment?.audioPath) throw new Error("当前会话中找不到此音视频原文件附件，请重新添加。");
+      path = attachment.audioPath;
+      label = attachment.name;
+    } else {
+      if (typeof args.path !== "string" || !args.path.trim()) throw new Error("请提供音视频文件路径。");
+      path = args.path;
+      label = path;
+    }
     const offset = args.offset ?? 0;
     if (typeof offset !== "number" || !Number.isSafeInteger(offset) || offset < 0) throw new Error("offset 必须是非负整数。");
     const s = context.store;
     const connection = transcriptionConnection(s.remoteModels, s.audioModelCode);
-    const approval = await requestApproval({ command: `transcribe_audio ${args.path}`,
+    const approval = await requestApproval({ command: `transcribe_audio ${label}`,
       reason: `读取音视频并将音轨发送到语音服务 ${new URL(connection.url).host}，结果保存到当前会话产物目录。`,
-      pattern: `audio:${args.path}`, decision: "ask" }, context.approvalHost);
+      pattern: `audio:${path}`, decision: "ask" }, context.approvalHost);
     if (!approval.approved) throw new Error("音视频转写未获批准。");
     context.controller.signal.throwIfAborted();
     if (!context.valid()) throw new DOMException("会话已失效", "AbortError");
-    const file = await inspectAudioFile(args.path, context.workspacePath);
+    const file = await inspectAudioFile(path, context.workspacePath);
     const options = { cachePath: context.cachePath, scope: JSON.stringify([s.modelSource, s.endpoint, s.currentUser]) };
     const text = await transcribeAudio(file, connection, context.controller.signal, (status) => {
       context.patch(id, (item) => item.type === "tool_call" ? { ...item, output: status } : item);

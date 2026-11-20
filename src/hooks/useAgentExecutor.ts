@@ -248,7 +248,7 @@ export function createAgentExecutor(
         mountedAny([WRITE_FILE_TOOL]) ? buildWriteFileHint() : "",
         mountedAny([VIDEO_TOOL]) ? "用户要求生成短片时调用 generate_video，附一张图时自动使用其作为首帧。本轮图片 ID：" + JSON.stringify(attachments.filter((a) => a.kind === "image").map(({ id, name }) => ({ id, name }))) : "",
         mountedAny([IMAGE_GEN_TOOL]) ? buildImageGenHint() : "",
-        mountedAny([TRANSCRIBE_AUDIO_TOOL]) ? "提取本地音视频的语音文字时使用 transcribe_audio，传文件路径，无需把二进制读入对话。失败后同路径重试可继续已保存进度，offset 可分页读取全文。" : "",
+        mountedAny([TRANSCRIBE_AUDIO_TOOL]) ? "只有用户要求转写、整理、总结等需要录音内容的任务时才调用 transcribe_audio。会话音视频原文件附件传 attachmentId，其他本地文件传 path，二者选一。仅附加文件不表示要求识别，应先询问用户希望如何处理；不可声称已听取未转写的附件。失败后同附件或路径重试可继续进度，offset 可分页读取全文。" : "",
         mountedAny([WEB_SEARCH_TOOL]) ? buildWebSearchHint() : "",
         mountedAny([KNOWLEDGE_SEARCH_TOOL]) ? buildKnowledgeSearchHint() : "",
         mountedAny([READ_URL_TOOL]) ? buildReadUrlHint() : "",

@@ -22,8 +22,7 @@ import { EffortSlider } from "./EffortSlider";
 import { ModelPicker } from "./ModelPicker";
 import { PermissionPicker } from "./PermissionPicker";
 import { SLASH_COMMANDS, type SlashItem } from "./commands";
-import { isAudioFile, isNativeAudioFile } from "../../audio/files";
-import { transcribeAudio, transcriptAttachment, transcriptionConnection } from "../../audio/transcription";
+import { isNativeAudioFile } from "../../audio/files";
 
 interface ComposerProps {
   prompt: string;
@@ -85,7 +84,6 @@ export function Composer({
   const submittingRef = useRef(false);
   const mountedRef = useRef(true);
   const [dragging, setDragging] = useState(false);
-  const [audioProgress, setAudioProgress] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -155,21 +153,12 @@ export function Composer({
    */
   const addFiles = useCallback(
     (batch: Promise<AttachmentBatch>) => {
-      const audioState = useAppStore.getState();
+      const cachePath = useAppStore.getState().cachePath;
       draft.add(batch, async (file) => {
-        if (isAudioFile(file)) {
-          try {
-            const text = await transcribeAudio(file, transcriptionConnection(audioState.remoteModels, audioState.audioModelCode), undefined, (status) => {
-              if (mountedRef.current) setAudioProgress(status);
-            }, { cachePath: audioState.cachePath, scope: JSON.stringify([audioState.modelSource, audioState.endpoint, audioState.currentUser]) });
-            return { ok: true, attachment: transcriptAttachment(file.name, text) };
-          } finally { if (mountedRef.current) setAudioProgress(null); }
-        }
-        if (isNativeAudioFile(file)) return { ok: false, reason: "此本地文件不是支持的音视频格式" };
-        if (attachmentMime(file).startsWith("image/") && !supportsImages && !videoAvailable) {
+        if (!isNativeAudioFile(file) && attachmentMime(file).startsWith("image/") && !supportsImages && !videoAvailable) {
           return { ok: false, reason: `当前模型 ${currentModel?.label ?? model} 未开启图片输入，可在「设置 → 默认模型 → 允许图片输入」中开启` };
         }
-        return createAttachment(file);
+        return createAttachment(file, cachePath);
       });
     },
     [draft, currentModel, model, supportsImages, videoAvailable],
@@ -454,7 +443,7 @@ export function Composer({
                   {item.kind === "image" && item.dataUrl ? (
                     <img className="attach-chip__thumb" src={item.dataUrl} alt={item.name} />
                   ) : (
-                    <Icon name="file" size={12} />
+                    <Icon name={item.kind === "audio" ? "audio" : "file"} size={12} />
                   )}
                   <span className="attach-chip__name">{item.name}</span>
                   <span className="attach-chip__size">{formatBytes(item.size)}</span>
@@ -472,17 +461,20 @@ export function Composer({
           {videoAvailable && !supportsImages && attachments.some((a) => a.kind === "image") && (
             <div className="attach-notice">图片可用作视频首帧。当前聊天模型仅读取附件名称。</div>
           )}
+          {attachments.some((a) => a.kind === "audio") && (
+            <div className="attach-notice">音视频保留为原文件。需要转写时，请输入“转成文字”。</div>
+          )}
           {notice ? (
             <div className="attach-notice" role="alert">
               <Icon name="alert" size={12} />
               {notice}
             </div>
           ) : null}
-          {pending > 0 ? <div className="attach-notice muted" role="status">{audioProgress || "正在读取或转写附件…"}</div> : null}
+          {pending > 0 ? <div className="attach-notice muted" role="status">正在添加附件…</div> : null}
           {dragging ? (
             <div className="attach-notice">
               <Icon name="image" size={12} />
-              松开鼠标即可添加图片、PDF、音频或文本文件（音频将上传转写）
+              松开鼠标即可添加图片、PDF、音视频或文本文件
             </div>
           ) : null}
           {slashOpen ? (
