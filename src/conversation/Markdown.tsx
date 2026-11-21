@@ -13,6 +13,7 @@ const MarkdownLinkHandler = createContext<((href: string) => boolean) | null>(nu
 interface MarkdownProps {
   text: string;
   className?: string;
+  allowImages?: boolean;
 }
 
 /** 代码块复制按钮「已复制」反馈的停留时长（毫秒）：与消息操作栏的节奏保持一致 */
@@ -122,12 +123,13 @@ const MARKDOWN_COMPONENTS: Components = {
  * 覆写两处：`<pre>` 包一层带复制按钮的容器（长 SQL / 代码总要被整段拿走）；
  * `<a>` 统一在新标签页打开并加 `rel="noreferrer"`，防止产物里的链接把应用窗口本身导航走。
  */
-export function MarkdownBase({ text, className }: MarkdownProps) {
+export function MarkdownBase({ text, className, allowImages = true }: MarkdownProps) {
   return (
     <div className={["md", className ?? ""].filter(Boolean).join(" ")}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={MARKDOWN_COMPONENTS}
+        disallowedElements={allowImages ? undefined : ["img"]}
         urlTransform={(url, key) => key === "href" && (LOCAL_FILE_LINK.test(url) || INTERNAL_PATH.test(url))
           ? url
           : defaultUrlTransform(url)}

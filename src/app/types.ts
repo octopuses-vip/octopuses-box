@@ -418,6 +418,7 @@ export type NavKey =
   | "tools"
   | "projects"
   | "chats"
+  | "apiHistory"
   | "settings";
 
 export type SettingsCategory =

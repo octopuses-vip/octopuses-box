@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { isDesktopRuntime } from "../../app/desktop/runtime";
 import { useAppStore } from "../../app/state";
 import type { NavKey } from "../../app/types";
 import { Icon, type IconName } from "../../components/Icon";
@@ -106,6 +107,15 @@ export function Sidebar() {
         >
           <Icon name="search" size={17} />
         </button>
+        {isDesktopRuntime() && (
+          <button type="button" className="sidebar__search sidebar__api-history"
+            aria-current={view === "apiHistory" ? "page" : undefined}
+            onClick={() => setView("apiHistory")}
+          >
+            <Icon name="message" size={17} />
+            <span>API 会话</span>
+          </button>
+        )}
       </div>
       <div className="sidebar__scroll">
         <div className="sidebar__section">

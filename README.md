@@ -29,7 +29,7 @@ octopuses 面向需要统一管理大模型接入的组织与个人。它把「�
 
 同一份代码在 macOS / Windows / Linux 上编译运行，界面与能力保持一致。
 
-> 本项目交付的是**桌面客户端**，不是可直接部署到 Web 服务器的在线聊天网站。开发时的浏览器预览仅用于调试与界面开发，不代表客户端可以在浏览器中完整运行。对应的管理平台（服务端）见 [octopuses-server](https://github.com/octopuses-vip/octopuses-server)。
+> 本项目提供 **桌面客户端**与可独立运行的 **HTTP API 服务**。浏览器预览用于调试客户端界面。模型列表和桌面登录账号由独立的 [octopuses-server](https://github.com/octopuses-vip/octopuses-server) 管理。
 
 ---
 
@@ -46,6 +46,7 @@ octopuses 面向需要统一管理大模型接入的组织与个人。它把「�
 - [数据与缓存目录](#数据与缓存目录)
 - [数据与安全](#数据与安全)
 - [平台能力矩阵](#平台能力矩阵)
+- [独立 API 服务](#独立-api-服务)
 - [命令行工具 ots-cli](#命令行工具-ots-cli)
 - [开发约定与质量检查](#开发约定与质量检查)
 - [常见问题](#常见问题)
@@ -209,7 +210,7 @@ octopuses/
 
 | 依赖 | 说明 |
 | --- | --- |
-| Node.js ≥ 22 + pnpm | 前端构建、包管理与配套服务运行时打包 |
+| Node.js ≥ 22.13 + pnpm | 前端构建、包管理与配套服务运行时打包 |
 | Rust 稳定版 | `cargo` 需在 `PATH` 中（非交互 shell 记得 `export PATH="$HOME/.cargo/bin:$PATH"`） |
 | 平台系统依赖 | macOS：Xcode Command Line Tools；Windows：WebView2 + MSVC 生成工具；Linux：见下 |
 
@@ -388,6 +389,10 @@ minisign -S -s octopuses.key -m <安装包路径>
 入口、启动方式、功能边界和验证记录见 [工作流使用说明](docs/codex-parity.md)。
 
 ---
+
+## 独立 API 服务
+
+`pnpm api` 启动独立 HTTP 服务并打印本地调用令牌。也可以在桌面端「设置 → 模型与连接 → 本地 API」直接启停服务。API 支持会话对话、语音转写、图片或视频生成任务，以及流式进度、取消和产物下载。启动参数、鉴权和接口示例见 [独立 API 使用文档](api-service/README.md)。
 
 ## 命令行工具 ots-cli
 

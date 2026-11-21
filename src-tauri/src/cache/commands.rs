@@ -17,6 +17,48 @@ pub fn cache_default_dir(app: AppHandle) -> Result<String, String> {
     Ok(home.join("octopuses").to_string_lossy().into_owned())
 }
 
+/// Share only the chosen cache path with the standalone API, never the WebView's session data.
+#[tauri::command]
+pub fn cache_record_location(app: AppHandle, path: Option<String>) -> Result<(), String> {
+    let home = app.path().home_dir().map_err(|error| error.to_string())?;
+    write_cache_location(&home, path.as_deref())
+}
+
+/// Save an absolute location or an explicit reset without requiring a mounted cache volume.
+fn write_cache_location(home: &Path, path: Option<&str>) -> Result<(), String> {
+    if path.is_some_and(|value| !Path::new(value).is_absolute() || value.contains('\0')) {
+        return Err("缓存目录必须是绝对路径。".into());
+    }
+    let directory = home.join(".octopuses");
+    std::fs::create_dir_all(&directory).map_err(|error| format!("创建本机配置目录失败：{error}"))?;
+    crate::json_store::write_json(
+        &directory.join("cache-location.json"),
+        &serde_json::json!({ "cachePath": path }),
+    )
+}
+
+#[cfg(test)]
+mod location_tests {
+    use super::*;
+
+    #[test]
+    fn desktop_cache_location_tracks_selection_and_clear() {
+        let home = tempfile::tempdir().unwrap();
+        let first = home.path().join("cache one");
+        let second = home.path().join("cache two");
+        let file = home.path().join(".octopuses/cache-location.json");
+        for path in [first, second] {
+            write_cache_location(home.path(), path.to_str()).unwrap();
+            let saved: serde_json::Value = crate::json_store::read_json(&file).unwrap().unwrap();
+            assert_eq!(saved["cachePath"], path.to_str().unwrap());
+        }
+        assert!(write_cache_location(home.path(), Some("relative/path")).is_err());
+        write_cache_location(home.path(), None).unwrap();
+        let saved: serde_json::Value = crate::json_store::read_json(&file).unwrap().unwrap();
+        assert!(saved["cachePath"].is_null());
+    }
+}
+
 /// 初始化缓存目录（开发者 Jan）：补齐全部固定子目录并返回统计信息
 #[tauri::command]
 pub fn cache_init(path: String) -> Result<CacheInfo, String> {

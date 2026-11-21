@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { DesktopApiSetting } from "../api/DesktopApiSetting";
 import { ComputerSettings } from "../computer/ComputerSettings";
 import { WindowsSandboxSetup } from "../components/WindowsSandboxSetup";
 import { WorkflowPreferences } from "../workflows/WorkflowPreferences";
@@ -629,6 +630,7 @@ export function SettingsPage() {
           ) : null}
         </div>
 
+        <DesktopApiSetting />
         </SettingsGroup>
 
         <SettingsGroup category="permissions" active={category}>

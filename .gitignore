@@ -54,3 +54,4 @@ update.md
 # Generated, platform-matched runtime packaged by prepare:runtime
 /src-tauri/runtime/
 /.octopuses-host/
+/.octopuses-api/

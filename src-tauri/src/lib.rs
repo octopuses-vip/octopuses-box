@@ -10,6 +10,8 @@ mod computer;
 mod computer_cross;
 mod browser_preview;
 mod companion;
+mod desktop_api;
+mod desktop_api_history;
 mod fileops;
 mod frontmatter;
 mod git;
@@ -117,6 +119,11 @@ pub fn run() {
             companion::companion_start,
             companion::companion_request,
             companion::companion_retire_legacy,
+            desktop_api::desktop_api_start,
+            desktop_api::desktop_api_status,
+            desktop_api::desktop_api_stop,
+            desktop_api_history::desktop_api_history_list,
+            desktop_api_history::desktop_api_history_read,
             session_exit_listening,
             session_exit_ready,
             knowledge::knowledge_model_status,
@@ -127,6 +134,7 @@ pub fn run() {
             knowledge::knowledge_model_cancel,
             knowledge::knowledge_model_remove,
             cache::cache_default_dir,
+            cache::cache_record_location,
             cache::cache_init,
             cache::cache_info,
             cache::cache_write,

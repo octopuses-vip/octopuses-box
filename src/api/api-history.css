@@ -1,0 +1,119 @@
+.api-history__toolbar,
+.api-history__pagination,
+.api-history__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.api-history__toolbar {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.api-history__layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 27%) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.api-history__list,
+.api-history__detail {
+  min-width: 0;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.api-history__list {
+  padding: 6px;
+}
+
+.api-history__item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  text-align: left;
+}
+
+.api-history__item:hover,
+.api-history__item[aria-current="true"] {
+  background: var(--bg-2);
+}
+
+.api-history__item[aria-current="true"] {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.api-history__title {
+  font-weight: var(--fw-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-history__meta,
+.api-history__job-id,
+.api-history__note {
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.api-history__detail-head,
+.api-history__turn {
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+
+.api-history__detail-head h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+
+.api-history__detail-head p {
+  margin: 4px 0;
+}
+
+.api-history__turn {
+  border-top: 1px solid var(--border);
+}
+
+.api-history__body {
+  margin-top: 12px;
+}
+
+.api-history__role {
+  margin-bottom: 6px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-heading);
+}
+
+.api-history__prompt {
+  white-space: pre-wrap;
+}
+
+.api-history__note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.api-history__pagination {
+  padding: 8px;
+  justify-content: flex-end;
+}
+
+@container (max-width: 510px) {
+  .api-history__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.api-history {
+  container-type: inline-size;
+}

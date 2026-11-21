@@ -37,6 +37,7 @@
       "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
       "../THIRD_PARTY_LICENSES/Symphonia-MPL-2.0.txt": "THIRD_PARTY_LICENSES/Symphonia-MPL-2.0.txt",
       "../companion/": "companion/",
+      "../api-service/": "api-service/",
       "../browser-extension/": "browser-extension/",
       "runtime/": "runtime/"
     },

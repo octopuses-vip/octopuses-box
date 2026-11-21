@@ -22,6 +22,7 @@
   "scripts": {
     "test": "tsx --tsconfig tsconfig.json --test tests/*.test.tsx",
     "dev": "vite",
+    "api": "node api-service/server.mjs",
     "build": "tsc && vite build",
     "check:file-size": "node scripts/check-file-size.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
@@ -31,7 +32,8 @@
     "cv:assets": "node scripts/sync-cv-assets.mjs",
     "tauri": "tauri",
     "prepare:runtime": "node scripts/prepare-runtime.mjs",
-    "test:host": "node --test tests/companion.test.mjs"
+    "test:host": "node --test tests/companion.test.mjs",
+    "test:api": "node --test tests/api-service.test.mjs"
   },
   "dependencies": {
     "@huggingface/tokenizers": "0.2.0",

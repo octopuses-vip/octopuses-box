@@ -154,6 +154,19 @@ export async function defaultCacheDir(): Promise<string> {
   return invoke<string>("cache_default_dir");
 }
 
+let cacheLocationWrite = Promise.resolve();
+
+/** Serialize cache selections so a late write cannot replace a newer choice. */
+export function recordDesktopCacheLocation(path: string | null): Promise<void> {
+  if (!isDesktopRuntime()) return Promise.resolve();
+  const write = cacheLocationWrite.then(async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("cache_record_location", { path });
+  });
+  cacheLocationWrite = write.catch(() => {});
+  return write;
+}
+
 /** 创建/确认缓存目录，返回目录信息；失败时抛出后端返回的错误信息 */
 export async function initCacheDir(path: string): Promise<CacheInfo> {
   if (!isDesktopRuntime()) {

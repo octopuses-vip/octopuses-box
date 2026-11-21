@@ -31,6 +31,7 @@ import { WindowControls } from "./WindowControls";
 
 const PAGES: Partial<Record<NavKey, ComponentType>> = {
   search: lazy(() => import("../pages/SearchPage").then((m) => ({ default: m.SearchPage }))),
+  apiHistory: lazy(() => import("../api/ApiHistoryPage").then((m) => ({ default: m.ApiHistoryPage }))),
   knowledge: lazy(() => import("../pages/KnowledgePage").then((m) => ({ default: m.KnowledgePage }))),
   mcp: lazy(() => import("../pages/McpPage").then((m) => ({ default: m.McpPage }))),
   ssh: lazy(() => import("../pages/SshPage").then((m) => ({ default: m.SshPage }))),
@@ -55,6 +56,7 @@ const VIEW_TITLE: Record<NavKey, string> = {
   tools: "工具",
   projects: "项目",
   chats: "会话",
+  apiHistory: "API 会话",
   settings: "设置",
 };
 
@@ -383,7 +385,7 @@ export function AppShell() {
               <header className="main-head main-head--management">
                 <div className="main-head__identity">
                   <h1 className="main-head__title">{VIEW_TITLE[view]}</h1>
-                  {project?.path && <div
+                  {view !== "apiHistory" && project?.path && <div
                     className="main-head__path main-head__workspace"
                     title={project.path}
                   >

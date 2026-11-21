@@ -45,7 +45,7 @@ sha2 = "0.10.9"
 # 模型请求代理（model_proxy）：流式转发要按块读响应体，并用 oneshot 承接取消信号
 futures = "0.3"
 # tokio：除模型代理所需外，SSH 远程运维（russh）需要 net / io-util / time / sync
-tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "sync", "time"] }
 # SSH 远程运维：纯 Rust 客户端与服务端实现，不依赖系统 ssh 或 C 库
 russh = "0.64.1"
 # SSH 文件传输：在 russh 通道之上提供 SFTP 子系统
